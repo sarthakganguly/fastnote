@@ -1,0 +1,45 @@
+<!-- templates/base.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}FastNote{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+    <div class="app-header">
+        <div class="logo">FastNote</div>
+        
+        <div class="search-container">
+            <div class="search-wrapper">
+                <input type="text" id="search-input" placeholder="Search notes and #tags...">
+                <button id="search-button" title="Search"></button> <!-- Search Icon -->
+            </div>
+            <div id="suggestions-box"></div>
+        </div>
+
+        <div class="header-right">
+            <!-- Theme switch and logout link are unchanged -->
+            <div class="theme-switch-wrapper" title="Toggle theme">
+                <span class="theme-label">Light</span>
+                <label class="theme-switch" for="checkbox">
+                    <input type="checkbox" id="checkbox" />
+                    <div class="slider"></div>
+                </label>
+                <span class="theme-label">Dark</span>
+            </div>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('logout') }}" class="logout-link">Logout</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

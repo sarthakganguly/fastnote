@@ -1,0 +1,17 @@
+services:
+  web:
+    # Build the Docker image from the Dockerfile in the current directory (.)
+    build: .
+    
+    # Map port 5000 on your local machine to port 5000 in the container
+    ports:
+      - "5000:5000"
+      
+    # Mount the local 'instance' directory into the container at '/app/instance'
+    # This is crucial for persisting your SQLite database on your host machine.
+    volumes:
+      - ./instance:/app/instance
+      
+    # Set environment variables for the Flask application
+    environment:
+      - FLASK_ENV=development

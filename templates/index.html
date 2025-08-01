@@ -1,0 +1,42 @@
+<!-- templates/index.html -->
+{% extends "base.html" %}
+
+{% block title %}Your Notes{% endblock %}
+
+{% block content %}
+<main class="main-layout">
+    <aside class="left-panel">
+        <button id="new-note-btn">New Note</button>
+        <ul id="notes-list">
+            <!-- This list will now be populated by JavaScript -->
+            {% for note in notes %}
+                <li data-id="{{ note.id }}">
+                    <div class="note-info">
+                        <span class="note-title">{{ note.title }}</span>
+                        <div class="note-tags">
+                            <!-- Tags will be injected here by JS -->
+                        </div>
+                    </div>
+                    <div class="note-actions">
+                        <button class="btn-action btn-edit" data-id="{{ note.id }}" title="Edit note">✎</button>
+                        <button class="btn-action btn-delete" data-id="{{ note.id }}" title="Delete note">🗑️</button>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    </aside>
+
+    <section class="right-panel">
+        <!-- The rest of this section is unchanged -->
+        <div id="note-view" class="note-content" style="display: none;"></div>
+        <div id="note-editor" class="note-content">
+            <h3 id="editor-title">Create a New Note</h3>
+            <form id="note-form" method="POST" action="{{ url_for('new_note') }}">
+                <input type="text" id="tags" name="tags" placeholder="#work, #life, #project...">
+                <textarea id="markdown-input" name="content" placeholder="Start writing your note here..."></textarea>
+                <button type="submit" class="btn-primary">Save Note</button>
+            </form>
+        </div>
+    </section>
+</main>
+{% endblock %}
