@@ -1,10 +1,11 @@
+// static/js/script.js (Final Version without Search Button)
+
 document.addEventListener('DOMContentLoaded', function() {
     // --- Global State & DOM Elements ---
     let ALL_TAGS = [];
     const body = document.body;
     const themeToggle = document.getElementById('checkbox');
     const searchInput = document.getElementById('search-input');
-    const searchButton = document.getElementById('search-button');
     const suggestionsBox = document.getElementById('suggestions-box');
     const notesList = document.getElementById('notes-list');
     const noteView = document.getElementById('note-view');
@@ -18,11 +19,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // --- Helper Functions ---
 
-    /**
-     * Generates a stable, visually pleasing color from a string (e.g., a tag name).
-     * @param {string} str - The input string.
-     * @returns {string} An HSL color code.
-     */
     const generateColorFromString = (str) => {
         let hash = 0;
         for (let i = 0; i < str.length; i++) {
@@ -32,29 +28,19 @@ document.addEventListener('DOMContentLoaded', function() {
         return `hsl(${h}, 70%, 70%)`;
     };
 
-    /**
-     * Determines if a background color is light or dark to choose contrasting text.
-     * @param {string} color - An HSL color string.
-     * @returns {string} 'light-text' or 'dark-text' class name.
-     */
     const getTextColorForBg = (color) => {
         if (color.startsWith('hsl')) {
             const lightness = parseInt(color.match(/(\d+)%\)/)[1]);
             return lightness > 55 ? 'dark-text' : 'light-text';
         }
-        return 'dark-text'; // Default for non-HSL colors
+        return 'dark-text';
     };
 
-    /**
-     * Renders a list of notes to the left panel.
-     * @param {Array} notes - Array of note objects from the API.
-     */
     const renderNoteList = (notes) => {
-        notesList.innerHTML = ''; // Clear current list
+        notesList.innerHTML = '';
         notes.forEach(note => {
             const li = document.createElement('li');
             li.dataset.id = note.id;
-
             const tagsHTML = (note.tags || '')
                 .split(',')
                 .filter(Boolean)
@@ -65,7 +51,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     return `<span class="tag-badge ${textColorClass}" style="background-color: ${bgColor};" data-tag="${cleanTag}">#${cleanTag}</span>`;
                 })
                 .join('');
-
             li.innerHTML = `
                 <div class="note-info">
                     <span class="note-title">${note.title}</span>
@@ -80,10 +65,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
-    /**
-     * Fetches notes from the server based on a search query and renders them.
-     * @param {string} query - The search query.
-     */
     const performSearch = async (query = '') => {
         try {
             const response = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
@@ -93,8 +74,6 @@ document.addEventListener('DOMContentLoaded', function() {
             console.error('Search failed:', error);
         }
     };
-
-    // --- Core Functionality ---
 
     const applyTheme = (theme) => {
         if (theme === 'dark') {
@@ -121,38 +100,26 @@ document.addEventListener('DOMContentLoaded', function() {
         tagsInput.value = '';
         markdownInput.value = '';
         editorTitle.innerText = 'Create a New Note';
-
         noteView.style.display = 'none';
         noteEditor.style.display = 'block';
         setActiveNote(null);
         markdownInput.focus();
     };
 
-    // --- Event Handlers ---
-
-    // Theme Toggling
     themeToggle.addEventListener('change', () => {
         const newTheme = themeToggle.checked ? 'dark' : 'light';
         localStorage.setItem('theme', newTheme);
         applyTheme(newTheme);
     });
 
-    // Search Button Click
-    searchButton.addEventListener('click', () => {
-        performSearch(searchInput.value);
-    });
-
-    // Search Input Actions (Live Search & Suggestions)
     searchInput.addEventListener('keyup', (e) => {
         if (e.key === 'Enter') {
             performSearch(searchInput.value);
             suggestionsBox.style.display = 'none';
             return;
         }
-
         const query = searchInput.value;
-        performSearch(query); // Live search
-
+        performSearch(query);
         const lastWord = query.split(/[\s,]+/).pop();
         if (lastWord.startsWith('#') && lastWord.length > 1) {
             const tagQuery = lastWord.substring(1).toLowerCase();
@@ -186,18 +153,14 @@ document.addEventListener('DOMContentLoaded', function() {
         suggestionsBox.style.display = 'block';
     };
 
-    // New Note Button
     newNoteBtn.addEventListener('click', showEditorForNewNote);
 
-    // Event Delegation for all actions on the notes list
     notesList.addEventListener('click', async (e) => {
         const target = e.target;
         const listItem = target.closest('li');
         if (!listItem) return;
-
         const noteId = listItem.dataset.id;
-
-        if (target.matches('.note-title')) {
+        if (target.matches('.note-info') || target.matches('.note-title')) {
             const response = await fetch(`/note/${noteId}`);
             const data = await response.json();
             noteView.innerHTML = data.html_content;
@@ -207,19 +170,16 @@ document.addEventListener('DOMContentLoaded', function() {
         } else if (target.matches('.btn-edit')) {
             const response = await fetch(`/note/${noteId}`);
             const data = await response.json();
-
             const formattedTags = (data.tags || '')
                 .split(',')
                 .filter(Boolean)
                 .map(t => `#${t.trim()}`)
                 .join(', ');
-
             noteForm.action = `/edit_note/${noteId}`;
             editorTitle.innerText = 'Edit Note';
             tagsInput.value = formattedTags;
             markdownInput.value = data.markdown_content;
             currentNoteId = noteId;
-
             noteView.style.display = 'none';
             noteEditor.style.display = 'block';
             setActiveNote(noteId);
@@ -245,27 +205,18 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // --- Initialization ---
     const initialize = async () => {
-        // Set theme from localStorage or default to dark
         const savedTheme = localStorage.getItem('theme') || 'dark';
         applyTheme(savedTheme);
-
-        // Fetch all unique tags for autosuggestion feature
         try {
             const response = await fetch('/api/tags');
             ALL_TAGS = await response.json();
         } catch (error) {
             console.error('Failed to fetch tags:', error);
         }
-
-        // Perform initial search to populate the note list
         await performSearch();
-
-        // Set the right panel to the new note editor state by default
         showEditorForNewNote();
     };
 
-    // Run the app
     initialize();
 });
