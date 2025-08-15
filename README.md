@@ -1,27 +1,30 @@
 # FastNote - A Local-First, Privacy-Focused Note-Taking App
 
-FastNote is a lightweight, self-hosted web application for writing and storing notes on your local device. It is designed for individuals who value data privacy and want a simple, powerful tool for personal knowledge management without relying on cloud services.
+FastNote is a lightweight, self-hosted web application for writing and storing notes, **and creating freeform diagrams**, on your local device. It is designed for individuals who value data privacy and want a simple, powerful tool for personal knowledge management without relying on cloud services.
 
-All data, including user information, notes, and tags, is stored in a local SQLite database on the device running the application.
+All data, including user information, notes, tags, and diagrams, is stored in a local SQLite database on the device running the application.
+
+![FastNote Screenshot]()
 
 ## Features
 
 -   **100% Local & Private:** No cloud storage. All your notes are stored locally.
--   **User Authentication:** Secure sign-up and sign-in system for personal use.
+-   **Dual Note Types:** Create both text-based notes and visual diagrams.
 -   **Markdown Support:** Write notes in Markdown and view them as rendered HTML.
--   **Powerful Tagging System:** Organize notes with colorful, clickable tags (`#tag`).
+-   **Integrated Diagram Editor:** Create, save, and edit freeform diagrams directly within your notes using the powerful **Excalidraw** canvas.
+-   **Powerful Tagging System:** Organize notes and diagrams with colorful, clickable tags (`#tag`).
 -   **Advanced Search:**
     -   Live full-text search across all notes.
     -   Search by single or multiple tags (`#work, #project`).
     -   Combine text and tags for complex queries (`meeting notes, #project`).
     -   Use `OR` logic for tags (`OR(#work, #home)`).
 -   **Dark/Light Mode:** A beautiful, modern interface with a theme toggle that remembers your preference.
--   **Data Export:** Download all your notes in a clean JSON format at any time.
+-   **Data Export:** Download all your notes and diagrams (as SVG) in a clean JSON format at any time.
 -   **Easy Deployment:** Runs entirely within a Docker container for a simple, one-command setup.
 
 ## Project Goal
 
-The primary goal of FastNote is to provide a fast, reliable, and private note-taking experience. In a world where personal data is often hosted on third-party servers, FastNote offers an alternative by putting the user in complete control of their information. It's built with standard, robust technologies (Python, Flask, SQLite, Docker) to be both easy to use and easy to maintain.
+The primary goal of FastNote is to provide a fast, reliable, and private note-taking experience. In a world where personal data is often hosted on third-party servers, FastNote offers an alternative by putting the user in complete control of their information. It's designed to support both textual and visual thinking by combining Markdown and diagramming in one simple tool.
 
 ## Getting Started
 
@@ -99,11 +102,10 @@ For new features or enhancements, feel free to open an issue to discuss your ide
 
 FastNote is a great foundation, and there are many ways it can be extended. Here are a few ideas for potential contributions:
 
--   **Database Migrations:** Implement a database migration tool like `Flask-Migrate` to handle schema changes without needing to delete the database.
+-   **Enhanced Excalidraw Integration:** Allow embedding saved diagrams directly within Markdown notes.
+-   **Note Linking:** Create `[[wiki-links]]` between notes and diagrams to build a personal knowledge base.
+-   **Database Migrations:** Implement a tool like `Flask-Migrate` to handle schema changes without needing to delete the database.
 -   **Rich Media:** Allow users to upload and embed images or other files directly into their notes.
 -   **Note Pinning:** Add the ability to "pin" important notes to the top of the list.
--   **Keyboard Shortcuts:** Implement shortcuts for creating a new note, saving, and toggling edit/view mode.
--   **WYSIWYG Editor:** Add a "What You See Is What You Get" editor that can be toggled with the Markdown editor for a more visual experience.
+-   **Keyboard Shortcuts:** Implement shortcuts for creating a new note, saving, and toggling between editors.
 -   **End-to-End Encryption:** For an extra layer of security, add client-side encryption before data is saved to the local database.
-
-Thank you for your interest in FastNote
