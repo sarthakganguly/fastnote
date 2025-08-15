@@ -286,3 +286,75 @@ input:checked + .slider:before { transform: translateX(24px); }
 #note-view code { background-color: var(--active-item-bg); padding: 2px 5px; border-radius: 4px; }
 #note-view pre { background-color: var(--active-item-bg); padding: 15px; border-radius: 5px; overflow-x: auto; }
 #note-view blockquote { border-left: 4px solid var(--border-color); padding-left: 15px; color: var(--text-secondary-color); margin-left: 0; }
+
+.new-note-buttons {
+    display: flex;
+    gap: 10px;
+    padding: 20px 20px 0 20px;
+}
+
+#new-note-btn, #new-diagram-btn {
+    flex: 1;
+    margin: 0;
+    padding: 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 16px;
+    text-align: center;
+    border: none;
+    transition: background-color var(--transition-speed);
+}
+
+#new-diagram-btn {
+    background-color: var(--active-item-bg);
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+#new-diagram-btn:hover {
+    background-color: var(--border-color);
+}
+
+#note-editor, #diagram-editor {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.editor-fields {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    margin-bottom: 15px;
+}
+
+#tags-input, #diagram-tags-input {
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background-color: var(--panel-bg-color);
+    color: var(--text-color);
+}
+
+#save-markdown-btn, #save-diagram-btn {
+    width: 150px;
+    align-self: flex-end;
+}
+
+#excalidraw-container {
+    flex-grow: 1;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    margin-bottom: 15px;
+}
+
+/* For the Excalidraw component itself */
+.excalidraw {
+    border-radius: 5px;
+}
+
+#save-diagram-btn:disabled {
+    background-color: var(--text-secondary-color);
+    cursor: not-allowed;
+    opacity: 0.6;
+}

@@ -1,5 +1,3 @@
-# app.py (Final Correct Version)
-
 import os
 import re
 import json
@@ -24,8 +22,10 @@ db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+
 # --- Helper function for Tag Parsing ---
 def parse_tags_from_string(tag_string):
+    """Parses a string from the input form, accepting only '#tag' formats."""
     if not tag_string:
         return ""
     valid_tags = [
@@ -34,6 +34,7 @@ def parse_tags_from_string(tag_string):
         if part.strip().startswith('#') and len(part.strip()) > 1
     ]
     return ','.join(valid_tags)
+
 
 # --- Database Models ---
 class User(UserMixin, db.Model):
@@ -45,22 +46,32 @@ class User(UserMixin, db.Model):
 class Note(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(200), nullable=False)
-    markdown_content = db.Column(db.Text, nullable=False)
-    html_content = db.Column(db.Text, nullable=False)
+    markdown_content = db.Column(db.Text, nullable=True) # Now nullable
+    html_content = db.Column(db.Text, nullable=True) # Now nullable, stores SVG for diagrams
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) # This line is essential
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     tags = db.Column(db.String(200))
+    
+    # New columns for Excalidraw support
+    note_type = db.Column(db.String(20), nullable=False, default='markdown')
+    excalidraw_json = db.Column(db.Text, nullable=True)
 
     def to_dict(self):
-        return {'id': self.id, 'title': self.title, 'tags': self.tags}
+        """Converts note object to a dictionary for the list view API."""
+        return {
+            'id': self.id,
+            'title': self.title,
+            'tags': self.tags,
+            'note_type': self.note_type # Essential for the frontend to know how to render
+        }
 
 # --- User Session Management ---
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
-# --- Authentication & Main Routes --- (Unchanged)
+# --- Authentication & Main Routes (Unchanged) ---
 @app.route('/signup', methods=['GET', 'POST'])
 def signup():
     if request.method == 'POST':
@@ -98,54 +109,93 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    notes = Note.query.filter_by(user_id=current_user.id).order_by(Note.created_at.desc()).all()
-    return render_template('index.html', notes=notes)
+    # This route now just serves the main page. All data is fetched by JavaScript.
+    return render_template('index.html')
 
-# --- Note CRUD API ---
-@app.route('/new_note', methods=['POST'])
+
+# --- UNIFIED NOTES API ---
+
+@app.route('/api/note', methods=['POST'])
 @login_required
-def new_note():
-    cleaned_tags = parse_tags_from_string(request.form.get('tags', '').strip())
-    note = Note(title=f"{datetime.now().strftime('%Y-%m-%d')}-{cleaned_tags}",
-                markdown_content=request.form.get('content'),
-                html_content=markdown2.markdown(request.form.get('content')),
-                user_id=current_user.id,
-                tags=cleaned_tags)
-    db.session.add(note)
+def create_note():
+    """Creates a new note or diagram from a JSON payload."""
+    data = request.get_json()
+    note_type = data.get('note_type', 'markdown')
+    tags_str = data.get('tags', '')
+    cleaned_tags = parse_tags_from_string(tags_str)
+
+    new_note = Note(
+        title=f"{datetime.now().strftime('%Y-%m-%d')}-{cleaned_tags}",
+        user_id=current_user.id,
+        tags=cleaned_tags,
+        note_type=note_type
+    )
+
+    if note_type == 'excalidraw':
+        new_note.excalidraw_json = data.get('excalidraw_json')
+        new_note.html_content = data.get('svg_content') # Store SVG in html_content
+    else: # Default to markdown
+        content = data.get('content', '')
+        new_note.markdown_content = content
+        new_note.html_content = markdown2.markdown(content)
+
+    db.session.add(new_note)
     db.session.commit()
-    return redirect(url_for('index'))
+    return jsonify(new_note.to_dict()), 201
 
-@app.route('/edit_note/<int:note_id>', methods=['POST'])
+@app.route('/api/note/<int:note_id>', methods=['PUT'])
 @login_required
-def edit_note(note_id):
-    note = Note.query.get_or_404(note_id)
-    if note.author != current_user:
-        return "Unauthorized", 403
-    cleaned_tags = parse_tags_from_string(request.form.get('tags', '').strip())
-    note.title = f"{note.created_at.strftime('%Y-%m-%d')}-{cleaned_tags}"
-    note.tags = cleaned_tags
-    note.markdown_content = request.form.get('content')
-    note.html_content = markdown2.markdown(request.form.get('content'))
-    db.session.commit()
-    return redirect(url_for('index'))
-
-@app.route('/note/<int:note_id>')
-@login_required
-def get_note(note_id):
+def update_note(note_id):
+    """Updates an existing note or diagram."""
     note = Note.query.get_or_404(note_id)
     if note.author != current_user: return jsonify({"error": "Unauthorized"}), 403
-    return jsonify({'html_content': note.html_content, 'markdown_content': note.markdown_content, 'tags': note.tags})
 
-@app.route('/delete_note/<int:note_id>', methods=['DELETE'])
+    data = request.get_json()
+    tags_str = data.get('tags', '')
+    cleaned_tags = parse_tags_from_string(tags_str)
+
+    note.tags = cleaned_tags
+    note.title = f"{note.created_at.strftime('%Y-%m-%d')}-{cleaned_tags}"
+    
+    if note.note_type == 'excalidraw':
+        note.excalidraw_json = data.get('excalidraw_json')
+        note.html_content = data.get('svg_content')
+    else:
+        content = data.get('content', '')
+        note.markdown_content = content
+        note.html_content = markdown2.markdown(content)
+        
+    db.session.commit()
+    return jsonify(note.to_dict())
+
+@app.route('/api/note/<int:note_id>', methods=['GET'])
 @login_required
-def delete_note(note_id):
+def get_note_details(note_id):
+    """Gets the full details of a single note for viewing or editing."""
+    note = Note.query.get_or_404(note_id)
+    if note.author != current_user: return jsonify({"error": "Unauthorized"}), 403
+    
+    return jsonify({
+        'id': note.id,
+        'note_type': note.note_type,
+        'tags': note.tags,
+        'markdown_content': note.markdown_content,
+        'html_content': note.html_content,
+        'excalidraw_json': note.excalidraw_json
+    })
+
+@app.route('/api/note/<int:note_id>', methods=['DELETE'])
+@login_required
+def delete_note_api(note_id):
+    """Deletes a note."""
     note = Note.query.get_or_404(note_id)
     if note.author != current_user: return jsonify({"error": "Unauthorized"}), 403
     db.session.delete(note)
     db.session.commit()
-    return jsonify({"success": True, "message": "Note deleted"})
-
+    return jsonify({"success": True})
+    
 # --- Search, Download, and Tags API ---
+
 @app.route('/api/search')
 @login_required
 def search_notes():
@@ -167,13 +217,23 @@ def search_notes():
 @app.route('/api/download')
 @login_required
 def download_notes():
+    """Exports all of the user's notes to a single JSON file."""
     notes = Note.query.filter_by(user_id=current_user.id).order_by(Note.created_at.asc()).all()
-    notes_for_export = [{
-        "noteCreatedDate": note.created_at.isoformat(),
-        "noteUpdatedDate": note.updated_at.isoformat(),
-        "noteContent": note.markdown_content,
-        "noteTags": note.tags.split(',') if note.tags else []
-    } for note in notes]
+    notes_for_export = []
+    for note in notes:
+        content = ""
+        if note.note_type == 'excalidraw':
+            content = note.html_content # The SVG content
+        else:
+            content = note.markdown_content
+
+        notes_for_export.append({
+            "noteCreatedDate": note.created_at.isoformat(),
+            "noteUpdatedDate": note.updated_at.isoformat(),
+            "noteContent": content,
+            "noteTags": note.tags.split(',') if note.tags else []
+        })
+        
     response_json = json.dumps(notes_for_export, indent=2)
     return Response(response_json, mimetype='application/json', headers={'Content-Disposition': 'attachment;filename=fastnote_export.json'})
 

@@ -1,29 +1,37 @@
-<!-- templates/index.html (Corrected) -->
+<!-- templates/index.html -->
 {% extends "base.html" %}
-
 {% block title %}Your Notes{% endblock %}
-
 {% block content %}
 <main class="main-layout">
     <aside class="left-panel">
-        <button id="new-note-btn">New Note</button>
+        <div class="new-note-buttons">
+            <button id="new-note-btn">New Note</button>
+            <button id="new-diagram-btn">New Diagram</button>
+        </div>
         <ul id="notes-list">
-            <!-- This list will now be populated by JavaScript -->
+            <!-- Populated by JavaScript -->
         </ul>
-        <!-- THIS IS THE DOWNLOAD LINK/BUTTON -->
         <a href="{{ url_for('download_notes') }}" class="btn-secondary" download>Download All Notes</a>
     </aside>
 
     <section class="right-panel">
         <div id="note-view" class="note-content" style="display: none;"></div>
         
-        <div id="note-editor" class="note-content">
-            <h3 id="editor-title">Create a New Note</h3>
-            <form id="note-form" method="POST" action="{{ url_for('new_note') }}">
-                <input type="text" id="tags" name="tags" placeholder="#work, #life, #project...">
-                <textarea id="markdown-input" name="content" placeholder="Start writing your note here..."></textarea>
-                <button type="submit" class="btn-primary">Save Note</button>
-            </form>
+        <div id="note-editor" class="note-content" style="display: none;">
+            <h3 id="editor-title"></h3>
+            <div class="editor-fields">
+                <input type="text" id="tags-input" placeholder="#work, #project...">
+                <textarea id="markdown-input" placeholder="Start writing your note here..."></textarea>
+            </div>
+            <button id="save-markdown-btn" class="btn-primary">Save Note</button>
+        </div>
+
+        <!-- NEW CONTAINER FOR EXCALIDRAW -->
+        <div id="diagram-editor" class="note-content" style="display: none;">
+             <h3 id="diagram-editor-title"></h3>
+             <input type="text" id="diagram-tags-input" placeholder="#diagram, #idea...">
+             <div id="excalidraw-container"></div>
+             <button id="save-diagram-btn" class="btn-primary" disabled>Save Diagram</button>
         </div>
     </section>
 </main>
