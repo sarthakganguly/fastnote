@@ -114,13 +114,8 @@ Follow these instructions to get the application running on your local server.
 -   Git (for cloning the repository).
 
 ### 1. Clone the Repository
-
-git clone <your-repository-url>
-cd fastnote
-
-### 1. Clone the Repository
 ```bash
-git clone <your-repository-url>
+git clone git@github.com:sarthakganguly/fastnote.git
 cd fastnote
 ```
 
