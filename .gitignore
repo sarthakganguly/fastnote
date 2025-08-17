@@ -1,0 +1,64 @@
+# --- General / System Files ---
+# Operating System files
+.DS_Store
+Thumbs.db
+
+# IDE and editor configuration
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Log files
+*.log
+
+
+# --- Backend (Python / Flask) ---
+# Python virtual environment
+venv/
+env/
+.venv/
+
+# Python bytecode and cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Flask instance folder (contains the SQLite DB and other instance-specific files)
+/fastnote/backend/instance/
+
+# Local environment variables
+# A .env.example file should be committed instead
+.env
+.flaskenv
+
+# Python packaging artifacts
+*.egg-info/
+dist/
+build/
+*.egg
+
+
+# --- Frontend (React / Node.js) ---
+# Dependencies - THIS IS THE MOST IMPORTANT ONE FOR THE FRONTEND
+/fastnote/frontend/node_modules/
+
+# Production build folder
+/fastnote/frontend/build/
+
+# Local environment variables for Create React App
+/fastnote/frontend/.env.local
+/fastnote/frontend/.env.development.local
+/fastnote/frontend/.env.test.local
+/fastnote/frontend/.env.production.local
+
+# Crash and debug logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+
+# --- Root Level ---
+# Data directory created by Docker Compose for the database volume
+/data/

@@ -1,0 +1,14 @@
+/* Inject Tailwind's base, component, and utility styles. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* You can add your own custom base styles here if needed. */
+body {
+  @apply bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100;
+  /* This sets up the default background and text colors for both light and dark modes. */
+  /* The transition helps smooth the color change when the theme is toggled. */
+  transition-property: color, background-color;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+}
