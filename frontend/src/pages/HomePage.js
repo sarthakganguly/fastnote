@@ -9,16 +9,18 @@ import MarkdownEditor from '../components/MarkdownEditor';
 import ExcalidrawEditor from '../components/ExcalidrawEditor';
 import WelcomeScreen from '../components/WelcomeScreen';
 
+const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+
 const HomePage = () => {
+    // ... (useState hooks)
     const { token, logout } = useAuth();
     const [notes, setNotes] = useState([]);
     const [activeNoteId, setActiveNoteId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
-    // Memoize the Axios instance to prevent re-creation on re-renders
     const api = useMemo(() => axios.create({
-        baseURL: 'http://localhost:5000/api',
+        baseURL: `${API_BASE_URL}/api`, // Use the variable here
         headers: { 'Authorization': `Bearer ${token}` }
     }), [token]);
 

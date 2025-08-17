@@ -6,6 +6,9 @@ Flask-Cors==4.0.1
 Flask-Bcrypt==1.0.1
 PyJWT==2.8.0
 
+# --- Asynchronous Worker for Gunicorn ---
+gevent==24.2.1
+
 # WSGI Server
 gunicorn==22.0.0
 
