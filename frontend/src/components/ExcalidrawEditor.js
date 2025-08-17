@@ -19,12 +19,20 @@ const ExcalidrawEditor = ({ activeNote, onUpdateNote }) => {
         return () => clearTimeout(handler);
     }, [title, activeNote, onUpdateNote]);
 
+    // This save handler now correctly structures the appState.
     const handleCanvasChange = useCallback((elements, appState) => {
         if (window.canvasSaveTimeout) {
             clearTimeout(window.canvasSaveTimeout);
         }
         window.canvasSaveTimeout = setTimeout(() => {
-            const contentString = JSON.stringify({ elements, appState });
+            const sceneData = {
+                elements: elements || [],
+                appState: {
+                    ...(appState || {}),
+                    collaborators: [], // Always save with a valid collaborators array inside appState
+                },
+            };
+            const contentString = JSON.stringify(sceneData);
             onUpdateNote({
                 ...activeNote,
                 content: contentString,
@@ -45,13 +53,25 @@ const ExcalidrawEditor = ({ activeNote, onUpdateNote }) => {
 
     if (!activeNote) return null;
 
+    // This function implements your GitHub finding correctly.
     const getInitialData = () => {
-        if (!activeNote.content) return null;
+        const defaultAppState = { collaborators: [] };
+
+        if (!activeNote.content) {
+            return { appState: defaultAppState };
+        }
         try {
-            return JSON.parse(activeNote.content);
+            const savedScene = JSON.parse(activeNote.content);
+            return {
+                ...savedScene,
+                appState: {
+                    ...(savedScene.appState || {}),
+                    collaborators: [], // Crucially, override collaborators inside appState
+                },
+            };
         } catch (error) {
-            console.error("Could not parse Excalidraw scene data.", error);
-            return null;
+            console.error("Could not parse Excalidraw scene data, loading blank scene.", error);
+            return { appState: defaultAppState };
         }
     };
 
