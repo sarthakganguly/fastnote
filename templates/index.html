@@ -1,4 +1,4 @@
-<!-- templates/index.html -->
+<!-- templates/index.html (Corrected and Final Version) -->
 {% extends "base.html" %}
 {% block title %}Your Notes{% endblock %}
 {% block content %}
@@ -11,7 +11,8 @@
         <ul id="notes-list">
             <!-- Populated by JavaScript -->
         </ul>
-        <a href="{{ url_for('download_notes') }}" class="btn-secondary" download>Download All Notes</a>
+        <!-- THIS IS THE FIX -->
+        <a href="{{ url_for('api.download_notes') }}" class="btn-secondary" download>Download All Notes</a>
     </aside>
 
     <section class="right-panel">
@@ -26,7 +27,6 @@
             <button id="save-markdown-btn" class="btn-primary">Save Note</button>
         </div>
 
-        <!-- NEW CONTAINER FOR EXCALIDRAW -->
         <div id="diagram-editor" class="note-content" style="display: none;">
              <h3 id="diagram-editor-title"></h3>
              <input type="text" id="diagram-tags-input" placeholder="#diagram, #idea...">
