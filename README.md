@@ -44,6 +44,7 @@ This project is built with a modern, containerized architecture.
 
 The project uses a monorepo structure with a clean separation between the frontend and backend services.
 
+```
 fastnote/
 │
 ├── .gitignore               # Specifies which files and folders to ignore for Git version control.
@@ -98,6 +99,8 @@ fastnote/
 #
 # fastnote/data/                     # Created by Docker Compose to persist the SQLite database file.
 # fastnote/backend/instance/         # Created by Flask to store the database and other instance-specific files.
+
+```
 
 ## Getting Started
 
