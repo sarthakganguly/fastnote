@@ -62,3 +62,4 @@ yarn-error.log*
 # --- Root Level ---
 # Data directory created by Docker Compose for the database volume
 /data/
+backend/instance/data/fastnote.db
