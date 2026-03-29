@@ -1,124 +1,118 @@
-# Fastnote: Production-Ready Personal Whiteboard & Knowledge Base
+Fastnote: Local-First Hybrid Note-Taking
+========================================
 
-![Fastnote](https://img.shields.io/badge/fastnote-v1.2.0-blueviolet)
-![Python](https://img.shields.io/badge/Python-3.9-blue)
-![React](https://img.shields.io/badge/React-18-61DAFB)
-![Clean Architecture](https://img.shields.io/badge/Architecture-Clean-green)
+**Fastnote** is a high-performance, offline-capable note-taking application designed for speed, data integrity, and privacy. Unlike traditional web apps that rely on a constant internet connection, Fastnote implements a **Local-First Architecture**. In this model, the browser's internal database is the primary source of truth, and the cloud acts as a secondary, optional sync engine.
 
-Fastnote is a high-performance, self-hosted note-taking application designed for privacy and visual thinking. It combines a professional **Markdown editor** with an infinite **Excalidraw canvas**, allowing you to bridge the gap between structured text and freeform diagrams.
+Developed by **Sarthak Ganguly**, this project demonstrates a robust implementation of modern distributed systems patterns on the web.
 
-The system is built on **Clean Architecture** principles, ensuring that business logic is decoupled from frameworks, making it easy to maintain, test, and scale.
+* * * * *
 
----
+🏗️ The Architecture: Local-First & Sync-Ready
+----------------------------------------------
 
-## 🚀 Key Features
+Fastnote is built to handle the "Flaky Network" reality of modern mobile and web usage.
 
--   **Dual-Engine Editing:**
-    -   **Markdown:** Full-featured text editor with live preview for documentation and journaling.
-    -   **Excalidraw Canvas:** Infinite whiteboard for sketches, system architecture diagrams, and mind maps.
--   **Clean Architecture Backend:** Highly modular Python/Flask backend using Service-Layer patterns.
--   **Production-Grade Stack:** Powered by Gunicorn with Gevent workers and `--preload` for high concurrency.
--   **Structured Observability:** Centralized logging and error handling for predictable debugging.
--   **Data Portability:** Full JSON import/export functionality to prevent vendor lock-in.
--   **Privacy First:** 100% self-hosted; your data never leaves your ThinkPad/Server.
--   **Responsive Dark Mode:** Optimized for late-night engineering sessions.
+-   **Primary Storage:** All notes are stored in **IndexedDB** using the **Dexie.js** wrapper. UI updates are optimistic and instantaneous.
 
----
+-   **Sync Engine:** A background worker polls the local database every 10 seconds for flags (`pending_sync` or `pending_delete`) and synchronizes them with the Flask backend.
 
-## 🏗 System Architecture
+-   **Conflict Resolution:** Implements a **Last-Write-Wins (LWW)** strategy using `updated_at` ISO timestamps to ensure the newest data always prevails across devices.
 
-The project follows a modular structure to ensure a separation of concerns:
+-   **ID Strategy:** Uses **UUIDv4** generated on the frontend to ensure zero ID collisions during offline creation. Includes a cryptographically secure fallback for non-secure (HTTP/IP-based) environments.
 
-### Backend Structure (`backend/app/`)
--   **`/core`**: Configuration management (12-factor app), security decorators, and global exception handlers.
--   **`/models`**: Data layer using SQLAlchemy (Modular folder approach).
--   **`/services`**: Pure business logic. This layer knows *how* to create notes and users but knows *nothing* about Flask or HTTP.
--   **`/api`**: Controllers/Routes. Handles request parsing and maps service responses to JSON.
+* * * * *
 
-### Frontend Structure (`frontend/src/`)
--   **`/components`**: Atomic UI components (Editors, Lists, Toggles).
--   **`/pages`**: Top-level route components.
--   **Centralized State**: Auth context and protected routing logic.
+🚀 Key Features
+---------------
 
----
+-   **Dual Editors:** Switch seamlessly between a GitHub-flavored **Markdown** editor and an infinite-canvas **Excalidraw** whiteboard.
 
-## 🛠 Tech Stack
+-   **Pro Sync:** Optional cloud backup for "Pro" users, managed via a dedicated `/api/notes/sync` upsert endpoint.
 
-| Component | Technology |
-| :--- | :--- |
-| **Backend** | Python 3.9+, Flask 3.x, Gunicorn, Gevent, SQLAlchemy |
-| **Frontend** | React 18, Tailwind CSS, Axios, @excalidraw/excalidraw |
-| **Database** | SQLite (Persisted via Docker Volumes) |
-| **DevOps** | Docker, Docker Compose, 12-Factor Config |
+-   **Hardened Security:** * **XSS Mitigation:** JWTs are stored in `HttpOnly` cookies---completely inaccessible to JavaScript.
 
----
+    -   **API Shielding:** Every request is validated against strict **Marshmallow** schemas before touching the database.
 
-## ⚡ Quick Start
+-   **Production-Ready Backend:** **Nginx** reverse proxy handles routing, while **Gunicorn** with **Gevent** workers manages high-concurrency sync traffic.
 
-### 1. Configure Networking (Critical)
-Since the frontend executes in your browser, it needs the **actual network IP** of your server (e.g., your ThinkPad) to communicate with the backend.
+-   **Responsive UI:** A clean, dark-mode-ready interface built with **Tailwind CSS**.
 
-1.  **Find your Server IP:**
-    ```bash
-    hostname -I | awk '{print $1}'
-    # Let's assume the output is 192.168.1.100
+* * * * *
+
+🛠️ Tech Stack
+--------------
+
+| **Component** | **Technology** |
+| --- | --- |
+| **Frontend** | React 18, Tailwind CSS, Dexie.js |
+| **Database (Local)** | IndexedDB (Browser) |
+| **Database (Cloud)** | SQLite (SQLAlchemy ORM) |
+| **API Framework** | Flask (Python 3.9) |
+| **Validation** | Marshmallow |
+| **Proxy / Web Server** | Nginx, Gunicorn (Gevent) |
+| **Containerization** | Docker, Docker Compose |
+
+* * * * *
+
+📦 Project Structure
+--------------------
+
+Plaintext
+
+```
+fastnote/
+├── backend/
+│   ├── app/
+│   │   ├── api/          # Sync, Auth, and Note blueprints
+│   │   ├── models/       # UUID-based SQLAlchemy models
+│   │   ├── schemas/      # Marshmallow validation schemas
+│   │   └── services/     # LWW conflict resolution logic
+├── frontend/
+│   ├── src/
+│   │   ├── db.js         # Dexie/IndexedDB configuration
+│   │   ├── components/   # Editor & UI components
+│   │   └── pages/        # Local-first HomePage logic
+└── proxy/                # Nginx configuration (reverse proxy & WS)
+
+```
+
+* * * * *
+
+🚦 Getting Started
+------------------
+
+### Prerequisites
+
+-   Docker & Docker Compose
+
+### Installation & Launch
+
+1.  Clone the repository.
+
+2.  Build and start the services:
+
+    Bash
+
     ```
-2.  **Update Configuration:**
-    Open `docker-compose.yml` and set the IP in the `frontend` service:
-    ```yaml
-    frontend:
-      environment:
-        - REACT_APP_API_BASE_URL=http://192.168.1.100:5000
+    docker-compose up -d --build
+
     ```
-    *Also ensure `frontend/.env` matches this value.*
 
-### 2. Deploy with Docker
-Run the following command from the root directory:
+3.  The application will be available at `http://localhost` (or your local network IP).
 
-```bash
-# Build and start in detached mode
-docker-compose up -d --build
-```
+### Environmental Configuration
 
-### 3. Initialize the App
-Access Fastnote in your browser:
-`http://192.168.1.100:3000`
+Configure the data loss warning interval and API endpoints via the `frontend/.env` and `backend/.env` files.
 
-> **Note:** Since the database initializes empty on the first run, go to the **Signup** page to create your primary account.
+> **Note:** Accessing via IP (e.g., `192.168.1.100`) triggers the secure-context fallback for UUID generation to ensure the app remains functional in non-HTTPS development environments.
 
----
+* * * * *
 
-## 🔧 Maintenance & Debugging
+🛡️ Security & Integrity
+------------------------
 
-### View Structured Logs
-Monitor backend performance and access logs in real-time:
-```bash
-docker compose logs -f backend
-```
+-   **Marshmallow Validation:** Prevents malformed JSON or "Undefined" content types from polluting the sync stream.
 
-### Force a Clean Rebuild
-If you change environment variables or structural packages:
-```bash
-docker compose down
-docker compose build --no-cache
-docker compose up -d
-```
+-   **Cookie-based Auth:** Eliminates local storage JWT theft risks by utilizing server-side cookie management.
 
-### Database Persistence
-The SQLite database is stored in a named Docker volume (`sqlite_data`). It persists even if containers are destroyed. To find the physical location on your host machine:
-```bash
-docker volume inspect fastnote_sqlite_data
-```
-
----
-
-## 🛡 Security & Configuration
-
-Fastnote uses **JWT (JSON Web Tokens)** for stateless authentication.
--   Default token expiration: **24 Hours**.
--   **IMPORTANT:** Change the `SECRET_KEY` in `docker-compose.yml` before deploying to a public-facing network.
-
----
-
-## 📝 License
-MIT - Created for self-hosters and visual thinkers.
+-   **Concurrency:** Optimized for high-frequency polling from multiple local-first clients via asynchronous workers.
