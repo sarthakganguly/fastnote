@@ -10,13 +10,15 @@ COPY requirements.txt .
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy the rest of the backend application's source code from your host to your image filesystem.
+# Copy the rest of the backend application's source code
 COPY . .
+
+# Copy the entrypoint script and ensure it has execution permissions
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
 # Expose port 5000 to allow communication with the app
 EXPOSE 5000
 
-# Command to run the application using Gunicorn.
-# The "-k gevent" flag tells Gunicorn to use the efficient, asynchronous gevent workers.
-# This prevents the timeout errors we were seeing with the default sync workers.
-CMD ["gunicorn", "--bind", "0.0.0.0:5000", "-k", "gevent", "--preload", "--workers", "4", "app.main:app"]
+# Use the entrypoint script to boot the application
+ENTRYPOINT ["/app/entrypoint.sh"]

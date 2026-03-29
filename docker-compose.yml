@@ -1,12 +1,23 @@
 services:
+  # NEW: The reverse proxy handles all incoming traffic
+  proxy:
+    image: nginx:alpine
+    container_name: fastnote-proxy
+    ports:
+      - "80:80"  # Expose port 80 to your host machine
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - backend
+      - frontend
+    restart: unless-stopped
+
   backend:
     build: ./backend
-    ports:
-      - "5000:5000"
+    # REMOVED: ports: - "5000:5000" (Now only accessible inside the Docker network)
     volumes:
       - sqlite_data:/app/data
     environment:
-      # Production overrides ensuring secure execution bounds
       - FLASK_ENV=production
       - DATABASE_URL=sqlite:////app/data/fastnote.db
       - SECRET_KEY=${SECRET_KEY:-generate_a_very_secure_random_key_here}
@@ -16,10 +27,11 @@ services:
 
   frontend:
     build: ./frontend
-    ports:
-      - "3000:3000"
     environment:
-      - REACT_APP_API_BASE_URL=http://192.168.1.100:5000
+      # 1. Force relative routing to bypass any hardcoded :5000 fallbacks
+      - REACT_APP_API_BASE_URL=/
+      # 2. Tell the React Dev Server to use the proxy's port (80) for WebSockets
+      - WDS_SOCKET_PORT=0
     container_name: fastnote-frontend
     depends_on:
       - backend

@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_BASE_URL;
+// This safely grabs the variable and strips off any trailing slash (including a solo "/")
+const API_URL = (process.env.REACT_APP_API_BASE_URL || '').replace(/\/$/, '');
 
 const SignupPage = () => {
     // ... (keep all the useState hooks)
