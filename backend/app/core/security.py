@@ -10,7 +10,7 @@ def generate_token(user_id: int, username: str) -> str:
     payload = {
         'user_id': user_id,
         'username': username,
-        'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+        'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=24)
     }
     return jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm="HS256")
 
@@ -29,8 +29,9 @@ def token_required(f):
             raise APIException('Authentication token is missing', 401)
 
         try:
+            from app.extensions import db
             data = jwt.decode(token, current_app.config['SECRET_KEY'], algorithms=["HS256"])
-            current_user = User.query.get(data['user_id'])
+            current_user = db.session.get(User, data['user_id'])
             if not current_user:
                 raise APIException('User associated with token no longer exists', 401)
             g.current_user = current_user
