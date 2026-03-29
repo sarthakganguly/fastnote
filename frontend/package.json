@@ -6,6 +6,7 @@
     "@excalidraw/excalidraw": "0.17.0",
     "@uiw/react-md-editor": "^4.0.4",
     "axios": "^1.7.2",
+    "dexie": "^4.4.1", 
     "jwt-decode": "^4.0.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

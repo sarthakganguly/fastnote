@@ -8,6 +8,7 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(256), nullable=False)
+    is_pro = db.Column(db.Boolean, default=False)
     
     notes = relationship('Note', backref='author', lazy=True, cascade="all, delete-orphan")
 

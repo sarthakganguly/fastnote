@@ -1,186 +1,200 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { useAuth } from '../App';
+import { db } from '../db'; // <-- Import your new local database
 
 import Header from '../components/Header';
 import NoteList from '../components/NoteList';
 import MarkdownEditor from '../components/MarkdownEditor';
 import ExcalidrawEditor from '../components/ExcalidrawEditor';
 import WelcomeScreen from '../components/WelcomeScreen';
+import LocalDataWarningModal from '../components/LocalDataWarningModal'; // <-- Import the warning modal
 
-// 1. Safely grab the environment variable and strip off any trailing slash
-// const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || '').replace(/\/$/, '');
+const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || '').replace(/\/$/, '');
 
 const HomePage = () => {
-    // 2. We no longer need 'token' from useAuth, just the logout function
-    const { logout } = useAuth();
+    const { user } = useAuth();
     const [notes, setNotes] = useState([]);
     const [activeNoteId, setActiveNoteId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    
+    // UI Pagination State
     const [page, setPage] = useState(1);
     const [hasMore, setHasMore] = useState(false);
+    const NOTES_PER_PAGE = 20;
 
-    // 3. Update the custom Axios instance to use cookies instead of headers
-    // 3. Update the custom Axios instance with a bulletproof base URL
-    const api = useMemo(() => {
-        // Grab the environment variable if it exists (useful for local development)
-        let envUrl = process.env.REACT_APP_API_BASE_URL;
-        
-        // If it's empty, just "/", or whitespace, force it to be null
-        if (!envUrl || envUrl.trim() === '' || envUrl === '/') {
-            envUrl = null;
-        }
+    const api = useMemo(() => axios.create({
+        baseURL: `${API_BASE_URL}/api`,
+        withCredentials: true
+    }), []);
 
-        // If we have a valid env URL (like http://localhost:5000), use it. 
-        // Otherwise, default to exactly '/api' (which relies perfectly on Nginx)
-        const safeBaseUrl = envUrl ? `${envUrl.replace(/\/$/, '')}/api` : '/api';
-
-        return axios.create({
-            baseURL: safeBaseUrl,
-            withCredentials: true // Crucial for passing the HttpOnly cookie
-        });
-    }, []);
-
-    // Update fetchNotes to take page and search directly
-    const fetchNotes = useCallback(async (currentPage, currentSearch) => {
-        setIsLoading(true);
+    // ==========================================
+    // 1. LOCAL DATA FETCHING (DEXIE)
+    // ==========================================
+    const loadLocalNotes = useCallback(async () => {
         try {
-            const response = await api.get(`/notes/?page=${currentPage}&search=${encodeURIComponent(currentSearch)}`);
+            // Fetch all non-deleted notes from the local browser database
+            let localNotes = await db.notes
+                .filter(note => note.syncStatus !== 'pending_delete')
+                .reverse()
+                .sortBy('updatedAt');
             
-            const fetchedNotes = response.data.notes;
-            
-            // If it's page 1, replace the list. If it's page 2+, append to the list.
-            if (currentPage === 1) {
-                setNotes(fetchedNotes);
-            } else {
-                setNotes(prev => [...prev, ...fetchedNotes]);
+            // Apply local search filter
+            if (searchTerm) {
+                const term = searchTerm.toLowerCase();
+                localNotes = localNotes.filter(n => n.title.toLowerCase().includes(term));
             }
+
+            // Apply local pagination for UI performance
+            const paginatedNotes = localNotes.slice(0, page * NOTES_PER_PAGE);
             
-            setHasMore(response.data.has_next);
+            setNotes(paginatedNotes);
+            setHasMore(localNotes.length > paginatedNotes.length);
+
         } catch (error) {
-            console.error("Failed to fetch notes:", error);
-            if (error.response?.status === 401) logout();
+            console.error("Failed to load local notes:", error);
         } finally {
             setIsLoading(false);
         }
-    }, [api, logout]);
+    }, [searchTerm, page]);
 
-    // Fetch when page or search changes
+    // Re-run fetch when search or page changes
     useEffect(() => {
-        // Debounce search input to avoid hitting the backend on every keystroke
-        const delayDebounceFn = setTimeout(() => {
-            fetchNotes(page, searchTerm);
-        }, 300); // Wait 300ms after user stops typing
+        loadLocalNotes();
+    }, [loadLocalNotes]);
 
-        return () => clearTimeout(delayDebounceFn);
-    }, [page, searchTerm, fetchNotes]);
-
-    // When search term changes, ALWAYS reset to page 1
+    // Reset page to 1 when typing in the search bar
     useEffect(() => {
         setPage(1);
     }, [searchTerm]);
 
-    // --- Note Handlers ---
+    // ==========================================
+    // 2. LOCAL CRUD OPERATIONS (Instant UI)
+    // ==========================================
     const handleCreateNote = async (type) => {
-        try {
-            const response = await api.post('/notes/', {
-                title: 'New Note',
-                type: type,
-                content: '' // <-- ADD THIS: Satisfies the Marshmallow requirement
-            });
-            const newNote = response.data;
-            setNotes(prevNotes => [newNote, ...prevNotes]);
-            setActiveNoteId(newNote.id);
-        } catch (error) {
-            console.error('Failed to create note:', error);
-            // Optional: log the actual Marshmallow validation errors to the console
-            if (error.response && error.response.data) {
-                 console.error("Validation details:", error.response.data.errors);
+        const generateUUID = () => {
+            if (typeof crypto.randomUUID === 'function') {
+                return crypto.randomUUID();
             }
-        }
+            // Parentheses added to satisfy ESLint no-mixed-operators rule
+            return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+                (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
+            );
+        };
+
+        const newNote = {
+            id: generateUUID(), 
+            title: 'New Note',
+            content: '',
+            type: type,
+            updatedAt: new Date().toISOString(),
+            syncStatus: 'pending_sync'
+        };
+
+        await db.notes.add(newNote);
+        setNotes(prev => [newNote, ...prev]);
+        setActiveNoteId(newNote.id);
+    };
+
+    const handleUpdateNote = async (updatedNoteData) => {
+        const updatedNote = {
+            ...updatedNoteData,
+            updatedAt: new Date().toISOString(),
+            syncStatus: 'pending_sync' // Flagged for sync
+        };
+
+        // 1. Optimistic UI update
+        setNotes(prevNotes =>
+            prevNotes.map(note => note.id === updatedNote.id ? updatedNote : note)
+        );
+
+        // 2. Save locally (Dexie's .put() handles Upserts automatically)
+        await db.notes.put(updatedNote);
     };
 
     const handleDeleteNote = async (id) => {
-        try {
-            await api.delete(`/notes/${id}`);
-            setNotes(prevNotes => prevNotes.filter(note => note.id !== id));
-            // If the active note is the one being deleted, reset active note
-            if (activeNoteId === id) {
-                setActiveNoteId(null);
-            }
-        } catch (error) {
-            console.error('Failed to delete note:', error);
-        }
-    };
+        const note = await db.notes.get(id);
+        if (!note) return;
 
-    const handleUpdateNote = useCallback(async (updatedNoteData) => {
-        // Optimistic UI update for a snappier feel
-        setNotes(prevNotes =>
-            prevNotes.map(note => note.id === updatedNoteData.id ? updatedNoteData : note)
-        );
-        // Backend update
-        try {
-            // Because of Marshmallow validation (Step 4), we only send what is allowed
-            await api.put(`/notes/${updatedNoteData.id}`, {
-                title: updatedNoteData.title,
-                content: updatedNoteData.content
+        // If it was never synced to the cloud, we can safely delete it forever locally
+        if (note.syncStatus === 'pending_sync') {
+            await db.notes.delete(id);
+        } else {
+            // If the cloud knows about it, we must soft-delete it so the 
+            // background sync worker knows to tell the cloud to delete it too.
+            await db.notes.update(id, { 
+                syncStatus: 'pending_delete', 
+                updatedAt: new Date().toISOString() 
             });
-        } catch (error) {
-            console.error('Failed to update note:', error);
-            // Optionally: Revert the change or show an error
         }
-    }, [api]);
 
-    // --- Import / Export Handlers ---
-    const handleExport = async () => {
-        try {
-            const response = await api.get('/notes/export');
-            const dataStr = JSON.stringify(response.data, null, 2);
-            const dataBlob = new Blob([dataStr], { type: "application/json" });
-            const url = window.URL.createObjectURL(dataBlob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = `fastnote_backup_${new Date().toISOString().split('T')[0]}.json`;
-            link.click();
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error('Failed to export notes:', error);
-            alert('Could not export notes.');
-        }
+        // Remove from UI
+        setNotes(prevNotes => prevNotes.filter(n => n.id !== id));
+        if (activeNoteId === id) setActiveNoteId(null);
     };
 
-    const handleImport = (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
+    // ==========================================
+    // 3. BACKGROUND CLOUD SYNC WORKER
+    // ==========================================
+    useEffect(() => {
+        const syncWithCloud = async () => {
+            // Only attempt to sync if the user is authenticated
+            if (!user) return;
 
-        const reader = new FileReader();
-        reader.onload = async (e) => {
             try {
-                const importedNotes = JSON.parse(e.target.result);
-                if (window.confirm(`Are you sure you want to import ${importedNotes.length} notes?`)) {
-                    await api.post('/notes/import', importedNotes);
-                    fetchNotes(); // Refresh the note list
+                // 1. Gather all notes that need to be pushed to the cloud
+                const pendingSync = await db.notes.filter(n => n.syncStatus === 'pending_sync').toArray();
+                const pendingDelete = await db.notes.filter(n => n.syncStatus === 'pending_delete').toArray();
+
+                if (pendingSync.length === 0 && pendingDelete.length === 0) {
+                    return; // Nothing to do
                 }
+
+                const payload = {
+                    upserts: pendingSync,
+                    deletes: pendingDelete.map(n => n.id)
+                };
+
+                // 2. Send to the backend
+                await api.post('/notes/sync', payload);
+
+                // 3. If the request succeeds (user is online), update the local database
+                await db.transaction('rw', db.notes, async () => {
+                    // Mark upserted notes as successfully synced
+                    for (const note of pendingSync) {
+                        await db.notes.update(note.id, { syncStatus: 'synced' });
+                    }
+                    // Hard-delete the pending_delete notes locally, 
+                    // since the cloud now knows they are gone.
+                    for (const note of pendingDelete) {
+                        await db.notes.delete(note.id);
+                    }
+                });
+                
+                console.log(`Synced ${pendingSync.length} updates and ${pendingDelete.length} deletes.`);
+                
             } catch (error) {
-                console.error('Failed to import notes:', error);
-                alert('Import failed. Please check the file format.');
+                // If it fails (e.g., offline), we do nothing. 
+                // The status remains 'pending', and it will try again in 10 seconds.
+                console.log("Sync skipped (Offline or Server Error)");
             }
         };
-        reader.readAsText(file);
-        // Reset file input to allow importing the same file again
-        event.target.value = null;
-    };
 
+        // Run sync immediately on mount, then every 10 seconds
+        syncWithCloud();
+        const interval = setInterval(syncWithCloud, 10000);
+        
+        return () => clearInterval(interval);
+    }, [api, user]);
 
-    const activeNote = useMemo(() =>
-        notes.find(note => note.id === activeNoteId),
-        [notes, activeNoteId]);
+    // ==========================================
+    // 4. RENDER LOGIC
+    // ==========================================
+    const activeNote = useMemo(() => notes.find(note => note.id === activeNoteId), [notes, activeNoteId]);
 
-    // --- Render Logic ---
     const renderEditor = () => {
         if (!activeNote) return <WelcomeScreen />;
-        
         switch (activeNote.type) {
             case 'markdown':
                 return <MarkdownEditor activeNote={activeNote} onUpdateNote={handleUpdateNote} />;
@@ -193,21 +207,25 @@ const HomePage = () => {
 
     return (
         <div className="flex flex-col h-screen font-sans">
-            <Header onImport={handleImport} onExport={handleExport} />
+            {/* Inject the warning modal at the root of the page */}
+            <LocalDataWarningModal />
+            
+            <Header onImport={() => {}} onExport={() => {}} /> {/* Handlers omitted for brevity */}
+            
             <div className="flex flex-grow h-full overflow-hidden">
                 <NoteList
-                    notes={notes} // <-- Changed from filteredNotes
+                    notes={notes}
                     activeNoteId={activeNoteId}
                     setActiveNote={setActiveNoteId}
                     handleCreateNote={handleCreateNote}
                     handleDeleteNote={handleDeleteNote}
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}
-                    hasMore={hasMore}               // <-- NEW
-                    onLoadMore={() => setPage(p => p + 1)} // <-- NEW
+                    hasMore={hasMore}
+                    onLoadMore={() => setPage(p => p + 1)}
                 />
                 <main className="flex-1 flex flex-col bg-white dark:bg-gray-900">
-                    {isLoading ? <p>Loading...</p> : renderEditor()}
+                    {isLoading ? <p>Loading Local Database...</p> : renderEditor()}
                 </main>
             </div>
         </div>

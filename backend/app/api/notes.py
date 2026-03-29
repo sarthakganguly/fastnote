@@ -69,3 +69,11 @@ def import_notes():
     # Note: For production, you would also want to loop through and validate 
     # 'data' against note_schema(many=True) before importing!
     return jsonify(NoteService.import_notes(g.current_user.id, data)), 201
+
+@notes_bp.route('/sync', methods=['POST'])
+@token_required
+def sync_notes():
+    # We bypass strict Marshmallow schema here because the payload 
+    # contains arrays of partial and complete note objects.
+    data = request.get_json() or {}
+    return jsonify(NoteService.sync_notes(g.current_user.id, data)), 200

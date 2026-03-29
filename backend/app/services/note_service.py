@@ -2,6 +2,7 @@ from app.models.note import Note
 from app.extensions import db
 from app.core.exceptions import APIException
 import logging
+import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -79,3 +80,52 @@ class NoteService:
         db.session.commit()
         logger.info(f"User {user_id} imported {len(notes_data)} notes.")
         return {'message': f'{len(notes_data)} notes imported successfully'}
+
+    @staticmethod
+    def sync_notes(user_id, data):
+        upserts = data.get('upserts', [])
+        deletes = data.get('deletes', [])
+
+        # 1. Process Deletions
+        if deletes:
+            Note.query.filter(Note.id.in_(deletes), Note.user_id == user_id).delete(synchronize_session=False)
+
+        # 2. Process Upserts (Update or Insert)
+        for note_data in upserts:
+            note_id = note_data.get('id')
+            client_updated_str = note_data.get('updatedAt')
+            
+            if not note_id or not client_updated_str:
+                continue
+
+            # Convert JavaScript ISO string to a naive Python datetime object
+            try:
+                # Replaces 'Z' with +00:00 for python 3.9+ compatibility
+                client_updated_at = datetime.datetime.fromisoformat(client_updated_str.replace('Z', '+00:00')).replace(tzinfo=None)
+            except ValueError:
+                continue # Skip invalid timestamps
+
+            existing_note = Note.query.filter_by(id=note_id, user_id=user_id).first()
+
+            if existing_note:
+                # LAST-WRITE-WINS LOGIC:
+                # Only update the database if the client's timestamp is strictly newer
+                if not existing_note.updated_at or client_updated_at > existing_note.updated_at:
+                    existing_note.title = note_data.get('title', existing_note.title)
+                    existing_note.content = note_data.get('content', existing_note.content)
+                    existing_note.type = note_data.get('type', existing_note.type)
+                    existing_note.updated_at = client_updated_at
+            else:
+                # Note doesn't exist on the server, create it!
+                new_note = Note(
+                    id=note_id,
+                    title=note_data.get('title', 'Untitled'),
+                    content=note_data.get('content', ''),
+                    type=note_data.get('type', 'markdown'),
+                    user_id=user_id,
+                    updated_at=client_updated_at
+                )
+                db.session.add(new_note)
+
+        db.session.commit()
+        return {'message': 'Sync successful'}
