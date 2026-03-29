@@ -6,78 +6,64 @@ import {
   Navigate,
   useLocation
 } from 'react-router-dom';
-import { jwtDecode } from 'jwt-decode';
+import axios from 'axios'; // <-- Import axios directly
 
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 
-// 1. --- Auth Context ---
+// Strip trailing slash just like we did in the pages
+const API_URL = (process.env.REACT_APP_API_BASE_URL || '').replace(/\/$/, '');
+
 const AuthContext = createContext(null);
 export const useAuth = () => useContext(AuthContext);
 
-// 2. --- Auth Provider (with loading state) ---
 const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // This handles the initial load (checking if a user was already logged in)
+  // Initial load: Check if the browser has a valid HttpOnly cookie
   useEffect(() => {
-    const savedToken = localStorage.getItem('token');
-    if (savedToken) {
+    const checkAuth = async () => {
       try {
-        const decoded = jwtDecode(savedToken);
-        const isExpired = Date.now() >= decoded.exp * 1000;
-        if (!isExpired) {
-          setToken(savedToken);
-          setUser({ username: decoded.username, id: decoded.user_id });
-        } else {
-          localStorage.removeItem('token');
-        }
-      } catch (e) {
-        localStorage.removeItem('token');
+        const response = await axios.get(`${API_URL}/api/auth/me`);
+        setUser(response.data); // User is verified
+      } catch (err) {
+        setUser(null); // No valid cookie
+      } finally {
+        setIsLoading(false);
       }
-    }
-    setIsLoading(false);
+    };
+    checkAuth();
   }, []);
 
-  const login = (newToken) => {
-    // 1. Decode immediately to get user data
-    const decoded = jwtDecode(newToken);
-    
-    // 2. Update all states AND localStorage at once
-    localStorage.setItem('token', newToken);
-    setToken(newToken);
-    setUser({ username: decoded.username, id: decoded.user_id });
-    
-    // This ensures that the moment navigate() is called, 
-    // the ProtectedRoute will see user as defined.
+  const login = (userData) => {
+    setUser(userData);
   };
 
-  const logout = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
+  const logout = async () => {
+    try {
+      // Tell the backend to destroy the cookie
+      await axios.post(`${API_URL}/api/auth/logout`);
+    } catch (err) {
+      console.error("Logout failed", err);
+    } finally {
+      // Clear local state regardless
+      setUser(null);
+    }
   };
 
-  const value = { token, user, login, logout, isLoading };
+  const value = { user, login, logout, isLoading };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
-// 3. --- Protected Route (aware of loading state) ---
 const ProtectedRoute = ({ children }) => {
-  const { user, isLoading } = useAuth(); // <-- Get isLoading from context
+  const { user, isLoading } = useAuth();
   const location = useLocation();
 
-  // If we are still checking for the user, don't render anything yet.
-  // You could also return a loading spinner component here.
-  if (isLoading) {
-    return null; 
-  }
+  if (isLoading) return null; 
 
-  // Now, after the loading is done, we can safely check for the user.
   if (!user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
@@ -85,7 +71,6 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-// 4. --- Main App Component (no changes here) ---
 function App() {
   return (
     <Router>

@@ -3,7 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../App';
 
-// This safely grabs the variable and strips off any trailing slash (including a solo "/")
+// Safely grab the environment variable and strip off any trailing slash
 const API_URL = (process.env.REACT_APP_API_BASE_URL || '').replace(/\/$/, '');
 
 const LoginPage = () => {
@@ -26,16 +26,15 @@ const LoginPage = () => {
         }
 
         try {
-            const response = await axios.post(`${API_URL}/api/auth/login`, {
+            await axios.post(`${API_URL}/api/auth/login`, {
                 username,
                 password,
             });
 
-            // This now updates token AND user state simultaneously
-            auth.login(response.data.token);
+            // The browser automatically saves the HttpOnly cookie from the response.
+            // We pass the username to our local React state so the app knows who is logged in.
+            auth.login({ username: username }); 
 
-            // Navigation will now work on the first try because 
-            // ProtectedRoute will see the user as logged in.
             navigate(from, { replace: true });
             
         } catch (err) {
@@ -43,7 +42,6 @@ const LoginPage = () => {
         }
     };
 
-    // ... (keep the entire return (...) block for the form)
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
             <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
@@ -109,4 +107,5 @@ const LoginPage = () => {
         </div>
     );
 };
+
 export default LoginPage;

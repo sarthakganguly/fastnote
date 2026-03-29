@@ -15,15 +15,11 @@ def generate_token(user_id: int, username: str) -> str:
     return jwt.encode(payload, current_app.config['SECRET_KEY'], algorithm="HS256")
 
 def token_required(f):
-    """Decorator to enforce valid JWT presence."""
+    """Decorator to enforce valid JWT presence via HttpOnly Cookie."""
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = None
-        if 'Authorization' in request.headers:
-            try:
-                token = request.headers['Authorization'].split(" ")[1]
-            except IndexError:
-                raise APIException('Malformed Authorization header', 401)
+        # NEW: We now extract the token from the cookie
+        token = request.cookies.get('access_token')
 
         if not token:
             raise APIException('Authentication token is missing', 401)
