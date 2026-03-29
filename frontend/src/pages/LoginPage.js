@@ -29,14 +29,16 @@ const LoginPage = () => {
                 username,
                 password,
             });
+
+            // This now updates token AND user state simultaneously
             auth.login(response.data.token);
+
+            // Navigation will now work on the first try because 
+            // ProtectedRoute will see the user as logged in.
             navigate(from, { replace: true });
+            
         } catch (err) {
-            if (err.response && err.response.data && err.response.data.message) {
-                setError(err.response.data.message);
-            } else {
-                setError('Login failed. Please check server connection.');
-            }
+            setError(err.response?.data?.message || 'Login failed.');
         }
     };
 

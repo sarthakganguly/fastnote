@@ -20,58 +20,48 @@ export const useAuth = () => useContext(AuthContext);
 const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('token'));
   const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true); // <-- NEW LOADING STATE
+  const [isLoading, setIsLoading] = useState(true);
 
+  // This handles the initial load (checking if a user was already logged in)
   useEffect(() => {
-    try {
-      if (token) {
-        const decodedUser = jwtDecode(token);
-        // Check if token is expired
-        const isExpired = Date.now() >= decodedUser.exp * 1000;
-        if (isExpired) {
-          setUser(null);
-          localStorage.removeItem('token');
+    const savedToken = localStorage.getItem('token');
+    if (savedToken) {
+      try {
+        const decoded = jwtDecode(savedToken);
+        const isExpired = Date.now() >= decoded.exp * 1000;
+        if (!isExpired) {
+          setToken(savedToken);
+          setUser({ username: decoded.username, id: decoded.user_id });
         } else {
-          setUser({ username: decodedUser.username, id: decodedUser.user_id });
-          localStorage.setItem('token', token);
+          localStorage.removeItem('token');
         }
-      } else {
-        setUser(null);
+      } catch (e) {
         localStorage.removeItem('token');
       }
-    } catch (error) {
-        console.error("Token validation failed:", error);
-        setUser(null);
-        localStorage.removeItem('token');
-    } finally {
-        // This is crucial: set loading to false after the check is complete.
-        setIsLoading(false); 
     }
-  }, [token]);
+    setIsLoading(false);
+  }, []);
 
   const login = (newToken) => {
-    try {
-      const decodedUser = jwtDecode(newToken);
-      const isExpired = Date.now() >= decodedUser.exp * 1000;
-      if (!isExpired) {
-        setUser({ username: decodedUser.username, id: decodedUser.user_id });
-        localStorage.setItem('token', newToken);
-        setToken(newToken);
-      } else {
-        throw new Error("Token expired");
-      }
-    } catch (error) {
-      console.error("Login token validation failed:", error);
-    }
+    // 1. Decode immediately to get user data
+    const decoded = jwtDecode(newToken);
+    
+    // 2. Update all states AND localStorage at once
+    localStorage.setItem('token', newToken);
+    setToken(newToken);
+    setUser({ username: decoded.username, id: decoded.user_id });
+    
+    // This ensures that the moment navigate() is called, 
+    // the ProtectedRoute will see user as defined.
   };
 
   const logout = () => {
+    localStorage.removeItem('token');
     setToken(null);
     setUser(null);
-    localStorage.removeItem('token');
   };
 
-  const value = { token, user, login, logout, isLoading }; // <-- Pass isLoading in context
+  const value = { token, user, login, logout, isLoading };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
