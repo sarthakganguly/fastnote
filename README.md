@@ -93,15 +93,15 @@ Access Fastnote in your browser:
 ### View Structured Logs
 Monitor backend performance and access logs in real-time:
 ```bash
-docker-compose logs -f backend
+docker compose logs -f backend
 ```
 
 ### Force a Clean Rebuild
 If you change environment variables or structural packages:
 ```bash
-docker-compose down
-docker-compose build --no-cache
-docker-compose up -d
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 ```
 
 ### Database Persistence
