@@ -50,11 +50,25 @@ const AuthProvider = ({ children }) => {
   }, [token]);
 
   const login = (newToken) => {
-    setToken(newToken);
+    try {
+      const decodedUser = jwtDecode(newToken);
+      const isExpired = Date.now() >= decodedUser.exp * 1000;
+      if (!isExpired) {
+        setUser({ username: decodedUser.username, id: decodedUser.user_id });
+        localStorage.setItem('token', newToken);
+        setToken(newToken);
+      } else {
+        throw new Error("Token expired");
+      }
+    } catch (error) {
+      console.error("Login token validation failed:", error);
+    }
   };
 
   const logout = () => {
     setToken(null);
+    setUser(null);
+    localStorage.removeItem('token');
   };
 
   const value = { token, user, login, logout, isLoading }; // <-- Pass isLoading in context
