@@ -1,205 +1,124 @@
-# Fastnote - A Modern, Self-Hosted Note-Taking Application
+# Fastnote: Production-Ready Personal Whiteboard & Knowledge Base
 
-![Fastnote](https://img.shields.io/badge/fastnote-v1.0.0-blueviolet)
+![Fastnote](https://img.shields.io/badge/fastnote-v1.2.0-blueviolet)
 ![Python](https://img.shields.io/badge/Python-3.9-blue)
 ![React](https://img.shields.io/badge/React-18-61DAFB)
-![Docker](https://img.shields.io/badge/Docker-Powered-2496ED)
+![Clean Architecture](https://img.shields.io/badge/Architecture-Clean-green)
 
-Fastnote is a full-stack, self-hosted web application that allows you to create, manage, and search for notes using a powerful Markdown editor or an infinite Excalidraw canvas. It is designed to run locally on your own server using Docker, ensuring your data remains private and under your control.
+Fastnote is a high-performance, self-hosted note-taking application designed for privacy and visual thinking. It combines a professional **Markdown editor** with an infinite **Excalidraw canvas**, allowing you to bridge the gap between structured text and freeform diagrams.
 
----
-
-## Features
-
--   **Secure User Authentication:** Sign up with a username and password, with secure login sessions.
--   **Dual Note Editors:**
-    -   **Markdown:** A feature-rich editor with a live preview for text-based notes.
-    -   **Excalidraw Canvas:** A virtual whiteboard for diagrams, sketches, and visual thinking.
--   **Complete Note Management:**
-    -   Create, edit, and delete notes from a responsive side panel.
-    -   Auto-saving functionality for a seamless workflow.
--   **Full-Text Search:** Quickly find the note you're looking for by searching titles.
--   **Responsive Design:** A clean and modern UI that works on both desktop and mobile devices.
--   **Theming:** A beautiful dark theme is enabled by default, with a toggle for a light theme.
--   **Data Portability:** Easily export all your notes to a single JSON file for backup and import them back into the application at any time.
--   **100% Self-Hosted:** All components run in Docker containers on your local server, and all data is stored in a local SQLite database.
+The system is built on **Clean Architecture** principles, ensuring that business logic is decoupled from frameworks, making it easy to maintain, test, and scale.
 
 ---
 
-## Tech Stack
+## 🚀 Key Features
 
-This project is built with a modern, containerized architecture.
-
-| Category          | Technology                                                                                           |
-| ----------------- | ---------------------------------------------------------------------------------------------------- |
-| **Backend**       | Python, Flask, Gunicorn, Flask-SQLAlchemy                                                            |
-| **Frontend**      | React, React Router, Axios, Tailwind CSS                                                             |
-| **Note Editors**  | `@uiw/react-md-editor`, `@excalidraw/excalidraw`                                                      |
-| **Database**      | SQLite (for simplicity and local storage)                                                            |
-| **Containerization** | Docker & Docker Compose                                                                              |
+-   **Dual-Engine Editing:**
+    -   **Markdown:** Full-featured text editor with live preview for documentation and journaling.
+    -   **Excalidraw Canvas:** Infinite whiteboard for sketches, system architecture diagrams, and mind maps.
+-   **Clean Architecture Backend:** Highly modular Python/Flask backend using Service-Layer patterns.
+-   **Production-Grade Stack:** Powered by Gunicorn with Gevent workers and `--preload` for high concurrency.
+-   **Structured Observability:** Centralized logging and error handling for predictable debugging.
+-   **Data Portability:** Full JSON import/export functionality to prevent vendor lock-in.
+-   **Privacy First:** 100% self-hosted; your data never leaves your ThinkPad/Server.
+-   **Responsive Dark Mode:** Optimized for late-night engineering sessions.
 
 ---
 
-## Project Structure
+## 🏗 System Architecture
 
-The project uses a monorepo structure with a clean separation between the frontend and backend services.
+The project follows a modular structure to ensure a separation of concerns:
 
-```
-fastnote/
-│
-├── .gitignore               # Specifies which files and folders to ignore for Git version control.
-├── docker-compose.yml       # The master file to build and run the entire application with Docker.
-└── README.md                # The detailed project documentation.
-│
-├── backend/
-│   ├── .flaskenv            # Environment variables for the Flask CLI (e.g., for migrations).
-│   ├── Dockerfile           # Instructions to build the Python backend Docker image.
-│   ├── requirements.txt     # A list of all Python package dependencies.
-│   └── app/
-│       ├── __init__.py      # Makes the 'app' directory a Python package.
-│       ├── database.py      # SQLAlchemy setup and database initialization logic.
-│       ├── main.py          # The Flask application factory; ties everything together.
-│       ├── models.py        # Defines the User and Note database tables (schema).
-│       └── api/
-│           ├── __init__.py  # Makes the 'api' directory a Python package.
-│           ├── auth.py      # API endpoints for user signup and login.
-│           └── notes.py     # API endpoints for CRUD operations on notes.
-│
-└── frontend/
-    ├── .env                 # Environment variables for React (e.g., the backend API URL).
-    ├── Dockerfile           # Instructions to build the React frontend Docker image.
-    ├── package.json         # Lists all Node.js dependencies and project scripts.
-    ├── postcss.config.js    # Configuration for PostCSS (used by Tailwind).
-    ├── tailwind.config.js   # Configuration file for Tailwind CSS.
-    │
-    ├── public/
-    │   ├── index.html       # The main HTML page that the React application is injected into.
-    │   └── manifest.json    # Provides application metadata for PWAs.
-    │
-    └── src/
-        ├── App.js           # The main React component, handles routing and authentication context.
-        ├── index.css        # Global CSS styles and Tailwind CSS directives.
-        ├── index.js         # The entry point for the React application.
-        │
-        ├── components/      # Reusable UI components.
-        │   ├── ExcalidrawEditor.js
-        │   ├── Header.js
-        │   ├── MarkdownEditor.js
-        │   ├── NoteItem.js
-        │   ├── NoteList.js
-        │   ├── ThemeToggle.js
-        │   └── WelcomeScreen.js
-        │
-        └── pages/           # Top-level components for each application page/route.
-            ├── HomePage.js
-            ├── LoginPage.js
-            └── SignupPage.js
+### Backend Structure (`backend/app/`)
+-   **`/core`**: Configuration management (12-factor app), security decorators, and global exception handlers.
+-   **`/models`**: Data layer using SQLAlchemy (Modular folder approach).
+-   **`/services`**: Pure business logic. This layer knows *how* to create notes and users but knows *nothing* about Flask or HTTP.
+-   **`/api`**: Controllers/Routes. Handles request parsing and maps service responses to JSON.
 
-# Note: The following directories are created at runtime and are correctly ignored by .gitignore:
-#
-# fastnote/data/                     # Created by Docker Compose to persist the SQLite database file.
-# fastnote/backend/instance/         # Created by Flask to store the database and other instance-specific files.
+### Frontend Structure (`frontend/src/`)
+-   **`/components`**: Atomic UI components (Editors, Lists, Toggles).
+-   **`/pages`**: Top-level route components.
+-   **Centralized State**: Auth context and protected routing logic.
 
-```
+---
 
-## Getting Started
+## 🛠 Tech Stack
 
-Follow these instructions to get the application running on your local server.
+| Component | Technology |
+| :--- | :--- |
+| **Backend** | Python 3.9+, Flask 3.x, Gunicorn, Gevent, SQLAlchemy |
+| **Frontend** | React 18, Tailwind CSS, Axios, @excalidraw/excalidraw |
+| **Database** | SQLite (Persisted via Docker Volumes) |
+| **DevOps** | Docker, Docker Compose, 12-Factor Config |
 
-### Prerequisites
+---
 
--   A machine running a Linux-based OS (e.g., Ubuntu Server).
--   [Docker](https://docs.docker.com/engine/install/) installed.
--   [Docker Compose](https://docs.docker.com/compose/install/) installed.
--   Git (for cloning the repository).
+## ⚡ Quick Start
 
-### 1. Clone the Repository
-```bash
-git clone git@github.com:sarthakganguly/fastnote.git
-cd fastnote
-```
+### 1. Configure Networking (Critical)
+Since the frontend executes in your browser, it needs the **actual network IP** of your server (e.g., your ThinkPad) to communicate with the backend.
 
-### 2. Configure the Frontend Environment
+1.  **Find your Server IP:**
+    ```bash
+    hostname -I | awk '{print $1}'
+    # Let's assume the output is 192.168.1.100
+    ```
+2.  **Update Configuration:**
+    Open `docker-compose.yml` and set the IP in the `frontend` service:
+    ```yaml
+    frontend:
+      environment:
+        - REACT_APP_API_BASE_URL=http://192.168.1.100:5000
+    ```
+    *Also ensure `frontend/.env` matches this value.*
 
-This is the most crucial configuration step. The React frontend (which runs in your web browser) needs to know the network address of the Python backend server. We will provide this address via an environment file.
-
-#### 2.1 Find the Server's IP Address
-
-You need the IP address of the machine where the Docker containers are running (your ThinkPad server).
-
-On your Ubuntu server, run the following command to find its local network IP:
-```bash
-hostname -I | awk '{print $1}'
-```
-
-### 2. Configure the Frontend Environment
-
-This is the most crucial configuration step. The React frontend (which runs in your web browser) needs to know the network address of the Python backend server. We will provide this address via an environment file.
-
-#### 2.1 Find the Server's IP Address
-
-You need the IP address of the machine where the Docker containers are running (your ThinkPad server).
-
-On your Ubuntu server, run the following command to find its local network IP:
-```bash
-hostname -I | awk '{print $1}'
-```
-
-The output will be an IP address like `192.168.1.XX` or `10.0.0.XX`. This is your `SERVER_IP`.
-
-> **Note:** If you are running both your browser and the Docker containers on the *same desktop machine* (e.g., your local development laptop), you can use `localhost` instead of the IP address.
-
-#### 2.2 Create the Environment File
-
-Create a new file named `.env` inside the `frontend` directory.
-```bash
-# From the root fastnote/ directory:
-touch frontend/.env
-```
-
-### 2.3 Add the API URL to the .env File
-
-Open the newly created `frontend/.env` file with a text editor (like `nano` or VS Code) and add the following line.
-
-**Important:** You must replace `YOUR_SERVER_IP` with the actual IP address you found in step 2.1.
-
-```env
-REACT_APP_API_BASE_URL=http://YOUR_SERVER_IP:5000
-```
-
-**Example 1 (Server Setup):**
-If your server's IP address is `192.168.1.55`, the file content should be:
-```env
-REACT_APP_API_BASE_URL=http://192.168.1.55:5000
-```
-
-**Example 2 (Local Desktop Setup):**
-If you are running everything on your main PC (not a separate server), you can use `localhost`:
-```env
-REACT_APP_API_BASE_URL=http://localhost:5000
-```
-
-This file is critical as it tells the React application running in your browser where to send its API requests to communicate with the backend.
-
-### 3. Build and Run the Application
-
-With the environment configured, starting the entire application is a single command. From the root `fastnote/` directory, run:
+### 2. Deploy with Docker
+Run the following command from the root directory:
 
 ```bash
-docker-compose up --build
+# Build and start in detached mode
+docker-compose up -d --build
 ```
 
--   `--build`: This flag is essential. It tells Docker Compose to build the application images, including your new `.env` file, before starting them.
--   To run the application in the background (detached mode), you can add the `-d` flag: `docker-compose up --build -d`.
+### 3. Initialize the App
+Access Fastnote in your browser:
+`http://192.168.1.100:3000`
 
-### 4. Access Fastnote
+> **Note:** Since the database initializes empty on the first run, go to the **Signup** page to create your primary account.
 
-After the build process is complete and the containers are running, wait about 30-40 seconds for the servers to fully initialize.
+---
 
-Then, open a web browser on a device **on the same network** as your server and navigate to:
+## 🔧 Maintenance & Debugging
 
-`http://<YOUR_SERVER_IP>:3000`
+### View Structured Logs
+Monitor backend performance and access logs in real-time:
+```bash
+docker-compose logs -f backend
+```
 
-(Or `http://localhost:3000` if you are on the same desktop machine).
+### Force a Clean Rebuild
+If you change environment variables or structural packages:
+```bash
+docker-compose down
+docker-compose build --no-cache
+docker-compose up -d
+```
 
-You should now see the Fastnote login screen, and the application will be fully functional.
+### Database Persistence
+The SQLite database is stored in a named Docker volume (`sqlite_data`). It persists even if containers are destroyed. To find the physical location on your host machine:
+```bash
+docker volume inspect fastnote_sqlite_data
+```
+
+---
+
+## 🛡 Security & Configuration
+
+Fastnote uses **JWT (JSON Web Tokens)** for stateless authentication.
+-   Default token expiration: **24 Hours**.
+-   **IMPORTANT:** Change the `SECRET_KEY` in `docker-compose.yml` before deploying to a public-facing network.
+
+---
+
+## 📝 License
+MIT - Created for self-hosters and visual thinkers.
