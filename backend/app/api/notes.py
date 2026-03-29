@@ -9,7 +9,12 @@ notes_bp = Blueprint('notes_bp', __name__)
 @notes_bp.route('/', methods=['GET'])
 @token_required
 def get_all_notes():
-    return jsonify(NoteService.get_all(g.current_user.id)), 200
+    # Grab query parameters, setting safe defaults
+    page = request.args.get('page', 1, type=int)
+    per_page = request.args.get('per_page', 20, type=int)
+    search = request.args.get('search', '', type=str)
+    
+    return jsonify(NoteService.get_all(g.current_user.id, page, per_page, search)), 200
 
 @notes_bp.route('/', methods=['POST'])
 @token_required

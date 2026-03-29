@@ -18,6 +18,8 @@ const HomePage = () => {
     const [activeNoteId, setActiveNoteId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
+    const [page, setPage] = useState(1);
+    const [hasMore, setHasMore] = useState(false);
 
     // 3. Update the custom Axios instance to use cookies instead of headers
     // 3. Update the custom Axios instance with a bulletproof base URL
@@ -40,12 +42,22 @@ const HomePage = () => {
         });
     }, []);
 
-    // --- Data Fetching ---
-    const fetchNotes = useCallback(async () => {
+    // Update fetchNotes to take page and search directly
+    const fetchNotes = useCallback(async (currentPage, currentSearch) => {
         setIsLoading(true);
         try {
-            const response = await api.get('/notes/');
-            setNotes(response.data);
+            const response = await api.get(`/notes/?page=${currentPage}&search=${encodeURIComponent(currentSearch)}`);
+            
+            const fetchedNotes = response.data.notes;
+            
+            // If it's page 1, replace the list. If it's page 2+, append to the list.
+            if (currentPage === 1) {
+                setNotes(fetchedNotes);
+            } else {
+                setNotes(prev => [...prev, ...fetchedNotes]);
+            }
+            
+            setHasMore(response.data.has_next);
         } catch (error) {
             console.error("Failed to fetch notes:", error);
             if (error.response?.status === 401) logout();
@@ -54,9 +66,20 @@ const HomePage = () => {
         }
     }, [api, logout]);
 
+    // Fetch when page or search changes
     useEffect(() => {
-        fetchNotes();
-    }, [fetchNotes]);
+        // Debounce search input to avoid hitting the backend on every keystroke
+        const delayDebounceFn = setTimeout(() => {
+            fetchNotes(page, searchTerm);
+        }, 300); // Wait 300ms after user stops typing
+
+        return () => clearTimeout(delayDebounceFn);
+    }, [page, searchTerm, fetchNotes]);
+
+    // When search term changes, ALWAYS reset to page 1
+    useEffect(() => {
+        setPage(1);
+    }, [searchTerm]);
 
     // --- Note Handlers ---
     const handleCreateNote = async (type) => {
@@ -150,12 +173,6 @@ const HomePage = () => {
     };
 
 
-    // --- Derived State for Rendering ---
-    const filteredNotes = useMemo(() =>
-        notes.filter(note =>
-            note.title.toLowerCase().includes(searchTerm.toLowerCase())
-        ), [notes, searchTerm]);
-
     const activeNote = useMemo(() =>
         notes.find(note => note.id === activeNoteId),
         [notes, activeNoteId]);
@@ -179,13 +196,15 @@ const HomePage = () => {
             <Header onImport={handleImport} onExport={handleExport} />
             <div className="flex flex-grow h-full overflow-hidden">
                 <NoteList
-                    notes={filteredNotes}
+                    notes={notes} // <-- Changed from filteredNotes
                     activeNoteId={activeNoteId}
                     setActiveNote={setActiveNoteId}
                     handleCreateNote={handleCreateNote}
                     handleDeleteNote={handleDeleteNote}
                     searchTerm={searchTerm}
                     setSearchTerm={setSearchTerm}
+                    hasMore={hasMore}               // <-- NEW
+                    onLoadMore={() => setPage(p => p + 1)} // <-- NEW
                 />
                 <main className="flex-1 flex flex-col bg-white dark:bg-gray-900">
                     {isLoading ? <p>Loading...</p> : renderEditor()}
