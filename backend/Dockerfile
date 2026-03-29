@@ -19,4 +19,4 @@ EXPOSE 5000
 # Command to run the application using Gunicorn.
 # The "-k gevent" flag tells Gunicorn to use the efficient, asynchronous gevent workers.
 # This prevents the timeout errors we were seeing with the default sync workers.
-CMD ["gunicorn", "-w", "4", "-k", "gevent", "-b", "0.0.0.0:5000", "app.main:app"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "-k", "gevent", "--preload", "--workers", "4", "app.main:app"]
