@@ -64,12 +64,17 @@ const HomePage = () => {
             const response = await api.post('/notes/', {
                 title: 'New Note',
                 type: type,
+                content: '' // <-- ADD THIS: Satisfies the Marshmallow requirement
             });
             const newNote = response.data;
             setNotes(prevNotes => [newNote, ...prevNotes]);
             setActiveNoteId(newNote.id);
         } catch (error) {
             console.error('Failed to create note:', error);
+            // Optional: log the actual Marshmallow validation errors to the console
+            if (error.response && error.response.data) {
+                 console.error("Validation details:", error.response.data.errors);
+            }
         }
     };
 
