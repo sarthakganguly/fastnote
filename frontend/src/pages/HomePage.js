@@ -2,27 +2,43 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { useAuth } from '../App';
 
-// Import all the components we've built
 import Header from '../components/Header';
 import NoteList from '../components/NoteList';
 import MarkdownEditor from '../components/MarkdownEditor';
 import ExcalidrawEditor from '../components/ExcalidrawEditor';
 import WelcomeScreen from '../components/WelcomeScreen';
 
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
+// 1. Safely grab the environment variable and strip off any trailing slash
+// const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || '').replace(/\/$/, '');
 
 const HomePage = () => {
-    // ... (useState hooks)
-    const { token, logout } = useAuth();
+    // 2. We no longer need 'token' from useAuth, just the logout function
+    const { logout } = useAuth();
     const [notes, setNotes] = useState([]);
     const [activeNoteId, setActiveNoteId] = useState(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
 
-    const api = useMemo(() => axios.create({
-        baseURL: `${API_BASE_URL}/api`, // Use the variable here
-        headers: { 'Authorization': `Bearer ${token}` }
-    }), [token]);
+    // 3. Update the custom Axios instance to use cookies instead of headers
+    // 3. Update the custom Axios instance with a bulletproof base URL
+    const api = useMemo(() => {
+        // Grab the environment variable if it exists (useful for local development)
+        let envUrl = process.env.REACT_APP_API_BASE_URL;
+        
+        // If it's empty, just "/", or whitespace, force it to be null
+        if (!envUrl || envUrl.trim() === '' || envUrl === '/') {
+            envUrl = null;
+        }
+
+        // If we have a valid env URL (like http://localhost:5000), use it. 
+        // Otherwise, default to exactly '/api' (which relies perfectly on Nginx)
+        const safeBaseUrl = envUrl ? `${envUrl.replace(/\/$/, '')}/api` : '/api';
+
+        return axios.create({
+            baseURL: safeBaseUrl,
+            withCredentials: true // Crucial for passing the HttpOnly cookie
+        });
+    }, []);
 
     // --- Data Fetching ---
     const fetchNotes = useCallback(async () => {
@@ -77,6 +93,7 @@ const HomePage = () => {
         );
         // Backend update
         try {
+            // Because of Marshmallow validation (Step 4), we only send what is allowed
             await api.put(`/notes/${updatedNoteData.id}`, {
                 title: updatedNoteData.title,
                 content: updatedNoteData.content

@@ -5,6 +5,9 @@ Flask-Migrate~=4.0.7
 Flask-Bcrypt~=1.0.1
 PyJWT~=2.8.0
 
+# --- Data Validation ---
+marshmallow~=3.21.1
+
 # --- Asynchronous Worker for Gunicorn ---
 gevent~=24.2.1
 
