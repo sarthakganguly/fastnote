@@ -42,6 +42,7 @@ build/
 
 # --- Frontend (React / Node.js) ---
 # Dependencies - THIS IS THE MOST IMPORTANT ONE FOR THE FRONTEND
+node_modules/
 /fastnote/frontend/node_modules/
 
 # Production build folder
