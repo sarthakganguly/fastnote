@@ -140,7 +140,9 @@ const HomePage = () => {
     useEffect(() => {
         const syncWithCloud = async () => {
             // Only attempt to sync if the user is authenticated
-            if (!user) return;
+            if (!user || !user.is_pro) {
+                return; // Silently do nothing for free users
+            }
 
             try {
                 // 1. Gather all notes that need to be pushed to the cloud

@@ -1,4 +1,4 @@
-from flask import Blueprint, request, jsonify, make_response
+from flask import Blueprint, request, jsonify, make_response, g
 from app.services.auth_service import AuthService
 from app.core.security import token_required
 
@@ -56,5 +56,6 @@ def get_current_user():
     # is valid and it attached the user to the Flask 'g' object.
     return jsonify({
         'id': g.current_user.id,
-        'username': g.current_user.username
+        'username': g.current_user.username,
+        'is_pro': g.current_user.is_pro
     }), 200

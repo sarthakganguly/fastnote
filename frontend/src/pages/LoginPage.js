@@ -26,14 +26,15 @@ const LoginPage = () => {
         }
 
         try {
-            await axios.post(`${API_URL}/api/auth/login`, {
+            // Capture the full response from the backend
+            const response = await axios.post(`${API_URL}/api/auth/login`, {
                 username,
                 password,
             });
 
-            // The browser automatically saves the HttpOnly cookie from the response.
-            // We pass the username to our local React state so the app knows who is logged in.
-            auth.login({ username: username }); 
+            // UPDATE: Pass the complete user object from the backend response
+            // This now includes id, username, and is_pro
+            auth.login(response.data.user); 
 
             navigate(from, { replace: true });
             
@@ -41,7 +42,7 @@ const LoginPage = () => {
             setError(err.response?.data?.message || 'Login failed.');
         }
     };
-
+    
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
             <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md dark:bg-gray-800">
