@@ -16,3 +16,6 @@ gunicorn~=22.0.0
 
 # For handling .env files
 python-dotenv~=1.0.1
+
+# payments
+dodopayments

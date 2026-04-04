@@ -1,10 +1,9 @@
 services:
-  # NEW: The reverse proxy handles all incoming traffic
   proxy:
     image: nginx:alpine
     container_name: fastnote-proxy
     ports:
-      - "80:80"  # Expose port 80 to your host machine
+      - "80:80"
     volumes:
       - ./nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
@@ -14,7 +13,13 @@ services:
 
   backend:
     build: ./backend
-    # REMOVED: ports: - "5000:5000" (Now only accessible inside the Docker network)
+    container_name: fastnote-backend
+    env_file:
+      - ./backend/.env
+    # FIX 1: Explicitly set DNS to bypass local resolution issues
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
     volumes:
       - sqlite_data:/app/data
     environment:
@@ -22,17 +27,16 @@ services:
       - DATABASE_URL=sqlite:////app/data/fastnote.db
       - SECRET_KEY=${SECRET_KEY:-generate_a_very_secure_random_key_here}
       - LOG_LEVEL=INFO
-    container_name: fastnote-backend
+      # FIX 2: Tell Dodo where to redirect your browser after checkout
+      - FRONTEND_URL=https://2a43-103-215-237-93.ngrok-free.app
     restart: unless-stopped
 
   frontend:
     build: ./frontend
-    environment:
-      # 1. Force relative routing to bypass any hardcoded :5000 fallbacks
-      - REACT_APP_API_BASE_URL=/
-      # 2. Tell the React Dev Server to use the proxy's port (80) for WebSockets
-      - WDS_SOCKET_PORT=0
     container_name: fastnote-frontend
+    environment:
+      - REACT_APP_API_BASE_URL=/
+      - WDS_SOCKET_PORT=0
     depends_on:
       - backend
     restart: unless-stopped

@@ -73,13 +73,15 @@ def import_notes():
 @notes_bp.route('/sync', methods=['POST'])
 @token_required
 def sync_notes():
-    # NEW: Gate the sync feature to Pro users only
-    if not g.current_user.is_pro:
+    # We can keep this API-layer check for a fast, early return, 
+    # but the service layer is now protected too.
+    allowed_statuses = ['active', 'trialing']
+    
+    if g.current_user.subscription_status not in allowed_statuses:
         return jsonify({
-            "message": "Cloud sync is a Pro feature. Please upgrade your account."
+            "message": f"Sync unavailable. Account status: {g.current_user.subscription_status}."
         }), 403
 
-    # We bypass strict Marshmallow schema here because the payload 
-    # contains arrays of partial and complete note objects.
     data = request.get_json() or {}
-    return jsonify(NoteService.sync_notes(g.current_user.id, data)), 200
+    
+    return jsonify(NoteService.sync_notes(g.current_user, data)), 200

@@ -1,15 +1,18 @@
-import React, { useState } from 'react'; // ADDED: useState
+import React, { useState } from 'react';
 import { useAuth } from '../App';
 import ThemeToggle from './ThemeToggle';
-import UpgradeModal from './UpgradeModal'; // ADDED: Import the modal
+import UpgradeModal from './UpgradeModal';
 
 const Header = ({ onImport, onExport }) => { 
     const { user, logout } = useAuth();
-    const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false); // ADDED: State for modal
+    const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
     const handleImportClick = () => {
         document.getElementById('import-input').click();
     };
+
+    // Helper to determine if the user needs to see the upgrade button
+    const needsUpgrade = ['free', 'expired', 'canceled'].includes(user?.subscription_status);
 
     return (
         <>
@@ -19,10 +22,16 @@ const Header = ({ onImport, onExport }) => {
                     <h1 className="text-xl font-bold text-gray-900 dark:text-white">
                         Fastnote
                     </h1>
-                    {/* ADDED: Conditional Pro Badge */}
-                    {user?.is_pro && (
+                    
+                    {/* Dynamic Subscription Badges */}
+                    {user?.subscription_status === 'active' && (
                         <span className="px-2 py-0.5 text-xs font-bold text-white bg-gradient-to-r from-indigo-500 to-purple-500 rounded-md shadow-sm">
                             PRO
+                        </span>
+                    )}
+                    {user?.subscription_status === 'trialing' && (
+                        <span className="px-2 py-0.5 text-xs font-bold text-indigo-700 bg-indigo-100 rounded-md shadow-sm">
+                            TRIAL
                         </span>
                     )}
                 </div>
@@ -59,8 +68,8 @@ const Header = ({ onImport, onExport }) => {
                             {user?.username || 'User'}
                         </span>
                         
-                        {/* ADDED: Upgrade Button for Free Users */}
-                        {!user?.is_pro && (
+                        {/* Upgrade Button for Unsubscribed Users */}
+                        {needsUpgrade && (
                             <button
                                 onClick={() => setIsUpgradeModalOpen(true)}
                                 className="hidden md:flex items-center px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 dark:text-indigo-300 dark:bg-indigo-900/30 dark:hover:bg-indigo-900/50 rounded-md transition-colors"
@@ -82,7 +91,6 @@ const Header = ({ onImport, onExport }) => {
                 </div>
             </header>
 
-            {/* ADDED: Mount the Modal */}
             <UpgradeModal 
                 isOpen={isUpgradeModalOpen} 
                 onClose={() => setIsUpgradeModalOpen(false)} 

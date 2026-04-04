@@ -33,7 +33,7 @@ const LoginPage = () => {
             });
 
             // UPDATE: Pass the complete user object from the backend response
-            // This now includes id, username, and is_pro
+            // This now includes id, username, and subscription_status
             auth.login(response.data.user); 
 
             navigate(from, { replace: true });
@@ -42,7 +42,7 @@ const LoginPage = () => {
             setError(err.response?.data?.message || 'Login failed.');
         }
     };
-    
+
     return (
         <div className="flex items-center justify-center min-h-screen bg-gray-100 dark:bg-gray-900">
             <div className="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md dark:bg-gray-800">

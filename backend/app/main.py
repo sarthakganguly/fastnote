@@ -5,6 +5,7 @@ from app.core.logger import setup_logging
 from app.core.exceptions import register_error_handlers
 # REMOVED 'cors' from imports
 from app.extensions import db, migrate
+from app.api.payments import payments_bp
 
 def create_app(config_class=Config):
     setup_logging(config_class.LOG_LEVEL)
@@ -22,6 +23,7 @@ def create_app(config_class=Config):
     from app.api.notes import notes_bp
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(notes_bp, url_prefix='/api/notes')
+    app.register_blueprint(payments_bp, url_prefix='/api/payments')
 
     # Ensure the directory for the SQLite database exists
     db_uri = app.config['SQLALCHEMY_DATABASE_URI']

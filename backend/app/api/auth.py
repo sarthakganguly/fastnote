@@ -52,10 +52,9 @@ def logout():
 @auth_bp.route('/me', methods=['GET'])
 @token_required
 def get_current_user():
-    # If the @token_required decorator passes, it means the HttpOnly cookie 
-    # is valid and it attached the user to the Flask 'g' object.
     return jsonify({
         'id': g.current_user.id,
         'username': g.current_user.username,
-        'is_pro': g.current_user.is_pro
+        'subscription_status': g.current_user.subscription_status,
+        'trial_ends_at': g.current_user.trial_ends_at.isoformat() + 'Z' if g.current_user.trial_ends_at else None
     }), 200

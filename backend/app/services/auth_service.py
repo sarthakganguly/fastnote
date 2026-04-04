@@ -42,5 +42,5 @@ class AuthService:
         
         return {
             'token': token,
-            'user': {'id': user.id, 'username': user.username, 'is_pro': user.is_pro}
+            'user': {'id': user.id, 'username': user.username, 'subscription_status': user.subscription_status}
         }

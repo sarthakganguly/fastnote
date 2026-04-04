@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import { useAuth } from '../App';
-import { db } from '../db'; // <-- Import your new local database
+import { db } from '../db';
 
 import Header from '../components/Header';
 import NoteList from '../components/NoteList';
 import MarkdownEditor from '../components/MarkdownEditor';
 import ExcalidrawEditor from '../components/ExcalidrawEditor';
 import WelcomeScreen from '../components/WelcomeScreen';
-import LocalDataWarningModal from '../components/LocalDataWarningModal'; // <-- Import the warning modal
+import LocalDataWarningModal from '../components/LocalDataWarningModal';
 
 const API_BASE_URL = (process.env.REACT_APP_API_BASE_URL || '').replace(/\/$/, '');
 
@@ -34,19 +34,16 @@ const HomePage = () => {
     // ==========================================
     const loadLocalNotes = useCallback(async () => {
         try {
-            // Fetch all non-deleted notes from the local browser database
             let localNotes = await db.notes
                 .filter(note => note.syncStatus !== 'pending_delete')
                 .reverse()
                 .sortBy('updatedAt');
             
-            // Apply local search filter
             if (searchTerm) {
                 const term = searchTerm.toLowerCase();
                 localNotes = localNotes.filter(n => n.title.toLowerCase().includes(term));
             }
 
-            // Apply local pagination for UI performance
             const paginatedNotes = localNotes.slice(0, page * NOTES_PER_PAGE);
             
             setNotes(paginatedNotes);
@@ -59,12 +56,10 @@ const HomePage = () => {
         }
     }, [searchTerm, page]);
 
-    // Re-run fetch when search or page changes
     useEffect(() => {
         loadLocalNotes();
     }, [loadLocalNotes]);
 
-    // Reset page to 1 when typing in the search bar
     useEffect(() => {
         setPage(1);
     }, [searchTerm]);
@@ -77,7 +72,6 @@ const HomePage = () => {
             if (typeof crypto.randomUUID === 'function') {
                 return crypto.randomUUID();
             }
-            // Parentheses added to satisfy ESLint no-mixed-operators rule
             return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
                 (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
             );
@@ -101,15 +95,13 @@ const HomePage = () => {
         const updatedNote = {
             ...updatedNoteData,
             updatedAt: new Date().toISOString(),
-            syncStatus: 'pending_sync' // Flagged for sync
+            syncStatus: 'pending_sync'
         };
 
-        // 1. Optimistic UI update
         setNotes(prevNotes =>
             prevNotes.map(note => note.id === updatedNote.id ? updatedNote : note)
         );
 
-        // 2. Save locally (Dexie's .put() handles Upserts automatically)
         await db.notes.put(updatedNote);
     };
 
@@ -117,19 +109,15 @@ const HomePage = () => {
         const note = await db.notes.get(id);
         if (!note) return;
 
-        // If it was never synced to the cloud, we can safely delete it forever locally
         if (note.syncStatus === 'pending_sync') {
             await db.notes.delete(id);
         } else {
-            // If the cloud knows about it, we must soft-delete it so the 
-            // background sync worker knows to tell the cloud to delete it too.
             await db.notes.update(id, { 
                 syncStatus: 'pending_delete', 
                 updatedAt: new Date().toISOString() 
             });
         }
 
-        // Remove from UI
         setNotes(prevNotes => prevNotes.filter(n => n.id !== id));
         if (activeNoteId === id) setActiveNoteId(null);
     };
@@ -139,18 +127,18 @@ const HomePage = () => {
     // ==========================================
     useEffect(() => {
         const syncWithCloud = async () => {
-            // Only attempt to sync if the user is authenticated
-            if (!user || !user.is_pro) {
-                return; // Silently do nothing for free users
+            // ONLY sync if the user has an active or trialing subscription
+            const allowedStatuses = ['active', 'trialing'];
+            if (!user || !allowedStatuses.includes(user.subscription_status)) {
+                return; 
             }
 
             try {
-                // 1. Gather all notes that need to be pushed to the cloud
                 const pendingSync = await db.notes.filter(n => n.syncStatus === 'pending_sync').toArray();
                 const pendingDelete = await db.notes.filter(n => n.syncStatus === 'pending_delete').toArray();
 
                 if (pendingSync.length === 0 && pendingDelete.length === 0) {
-                    return; // Nothing to do
+                    return; 
                 }
 
                 const payload = {
@@ -158,37 +146,47 @@ const HomePage = () => {
                     deletes: pendingDelete.map(n => n.id)
                 };
 
-                // 2. Send to the backend
                 await api.post('/notes/sync', payload);
 
-                // 3. If the request succeeds (user is online), update the local database
                 await db.transaction('rw', db.notes, async () => {
-                    // Mark upserted notes as successfully synced
                     for (const note of pendingSync) {
                         await db.notes.update(note.id, { syncStatus: 'synced' });
                     }
-                    // Hard-delete the pending_delete notes locally, 
-                    // since the cloud now knows they are gone.
                     for (const note of pendingDelete) {
                         await db.notes.delete(note.id);
                     }
                 });
                 
-                console.log(`Synced ${pendingSync.length} updates and ${pendingDelete.length} deletes.`);
-                
             } catch (error) {
-                // If it fails (e.g., offline), we do nothing. 
-                // The status remains 'pending', and it will try again in 10 seconds.
                 console.log("Sync skipped (Offline or Server Error)");
             }
         };
 
-        // Run sync immediately on mount, then every 10 seconds
         syncWithCloud();
         const interval = setInterval(syncWithCloud, 10000);
         
         return () => clearInterval(interval);
     }, [api, user]);
+
+    // ==========================================
+    // CHECKOUT SUCCESS HANDLER
+    // ==========================================
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        
+        if (urlParams.get('checkout') === 'success') {
+            // 1. Show a nice success message to the user
+            alert("🎉 Upgrade successful! Your cloud sync is now active.");
+            
+            // 2. Clean the URL so we don't keep triggering this if they manually refresh
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            // 3. Force a full page reload. 
+            // This ensures your AuthProvider hits the /api/auth/me endpoint again 
+            // and grabs the new 'trialing' or 'active' subscription_status.
+            window.location.reload();
+        }
+    }, []);
 
     // ==========================================
     // 4. RENDER LOGIC
@@ -209,10 +207,18 @@ const HomePage = () => {
 
     return (
         <div className="flex flex-col h-screen font-sans">
-            {/* Inject the warning modal at the root of the page */}
             <LocalDataWarningModal />
             
-            <Header onImport={() => {}} onExport={() => {}} /> {/* Handlers omitted for brevity */}
+            <Header onImport={() => {}} onExport={() => {}} /> 
+
+            {/* Trial Expired Banner */}
+            {user?.subscription_status === 'expired' && (
+                <div className="bg-red-50 dark:bg-red-900/30 border-b border-red-200 dark:border-red-800 p-3 text-center flex-shrink-0">
+                    <p className="text-sm text-red-600 dark:text-red-400">
+                        <strong>Your trial has expired.</strong> Cloud sync is currently paused. Please update your payment method to keep your data safely backed up.
+                    </p>
+                </div>
+            )}
             
             <div className="flex flex-grow h-full overflow-hidden">
                 <NoteList
@@ -232,6 +238,8 @@ const HomePage = () => {
             </div>
         </div>
     );
+
+
 };
 
 export default HomePage;
