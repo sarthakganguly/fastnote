@@ -15,23 +15,15 @@ payments_bp = Blueprint('payments_bp', __name__)
 
 def get_dodo_client():
     api_key = os.environ.get("DODO_PAYMENTS_API_KEY")
+    client_kwargs = {"bearer_token": api_key}
     
-    # Force the URL based on the key prefix if possible
-    # or follow the environment variable
-    is_test_key = api_key.startswith("test_")
-    env_type = os.environ.get("DODO_PAYMENTS_ENVIRONMENT", "test_mode")
-
-    if is_test_key or env_type == "test_mode":
-        base_url = "https://test.dodopayments.com"
-        current_app.logger.info("Using DODO TEST endpoint")
-    else:
-        base_url = "https://www.dodopayments.com"
-        current_app.logger.info("Using DODO LIVE endpoint")
-
-    return DodoPayments(
-        bearer_token=api_key,
-        base_url=base_url
-    )
+    if DodoPaymentsEnvironment:
+        if os.environ.get("DODO_PAYMENTS_ENVIRONMENT") == "test_mode":
+            client_kwargs["environment"] = DodoPaymentsEnvironment.TEST_MODE
+        else:
+            client_kwargs["environment"] = DodoPaymentsEnvironment.LIVE_MODE
+            
+    return DodoPayments(**client_kwargs)
 
 @payments_bp.route('/create-checkout', methods=['POST'])
 @token_required
