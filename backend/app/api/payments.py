@@ -17,11 +17,22 @@ def get_dodo_client():
     api_key = os.environ.get("DODO_PAYMENTS_API_KEY")
     client_kwargs = {"bearer_token": api_key}
     
+    # Check what environment is requested
+    env_request = os.environ.get("DODO_PAYMENTS_ENVIRONMENT", "live_mode")
+    
     if DodoPaymentsEnvironment:
-        if os.environ.get("DODO_PAYMENTS_ENVIRONMENT") == "test_mode":
+        if env_request == "test_mode":
             client_kwargs["environment"] = DodoPaymentsEnvironment.TEST_MODE
         else:
             client_kwargs["environment"] = DodoPaymentsEnvironment.LIVE_MODE
+    else:
+        # BETTER LOGGING: Let us know the import failed
+        current_app.logger.warning("DodoPaymentsEnvironment import failed. Falling back to string assignment.")
+        # Modern Python SDKs often accept the string directly if the Enum is missing
+        client_kwargs["environment"] = env_request
+
+    # BETTER LOGGING: Verify exactly what is being passed to the SDK
+    current_app.logger.info(f"Dodo SDK Initialized -> Environment: {client_kwargs.get('environment')}")
             
     return DodoPayments(**client_kwargs)
 
@@ -60,6 +71,13 @@ def webhook_handler():
     """Securely listens for Dodo Payments state changes (trial started, expired, active)."""
     client = get_dodo_client()
     payload = request.get_data()
+
+    # 1. Fetch your new webhook key from the environment
+    webhook_secret = os.environ.get("DODO_PAYMENTS_WEBHOOK_KEY")
+
+    if not webhook_secret:
+        current_app.logger.error("CRITICAL: DODO_PAYMENTS_WEBHOOK_KEY is missing from environment variables.")
+        return jsonify({"message": "Internal Server Error"}), 500
     
     try:
         # The SDK automatically verifies the cryptographic signature
@@ -69,7 +87,8 @@ def webhook_handler():
                 "webhook-id": request.headers.get("webhook-id"),
                 "webhook-signature": request.headers.get("webhook-signature"),
                 "webhook-timestamp": request.headers.get("webhook-timestamp")
-            }
+            },
+            
         )
     except Exception as e:
         current_app.logger.error(f"Webhook Signature Verification Failed: {e}")
@@ -77,7 +96,7 @@ def webhook_handler():
 
     # Process the event data
     event_data = event.data
-    metadata = event_data.get('metadata', {})
+    metadata = event_data.metadata or {}
     user_id = metadata.get('user_id')
 
     if not user_id:

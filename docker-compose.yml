@@ -28,7 +28,7 @@ services:
       - SECRET_KEY=${SECRET_KEY:-generate_a_very_secure_random_key_here}
       - LOG_LEVEL=INFO
       # FIX 2: Tell Dodo where to redirect your browser after checkout
-      - FRONTEND_URL=https://2a43-103-215-237-93.ngrok-free.app
+      - FRONTEND_URL=https://98e5-103-215-237-93.ngrok-free.app
     restart: unless-stopped
 
   frontend:
